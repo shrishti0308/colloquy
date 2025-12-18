@@ -18,6 +18,9 @@ const config = {
   // --- Database ---
   DB_URI: process.env.DB_URI || 'mongodb://localhost:27017/colloquy',
 
+  // --- Security ---
+  BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10),
+
   // --- Mail Service (Nodemailer) ---
   MAIL_HOST: process.env.MAIL_HOST,
   MAIL_PORT: parseInt(process.env.MAIL_PORT || '465', 10),
