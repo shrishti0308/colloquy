@@ -33,4 +33,10 @@ const config = {
   MAIL_FROM: process.env.MAIL_FROM,
 };
 
+if (!config.JWT_ACCESS_SECRET || !config.JWT_REFRESH_SECRET) {
+  throw new Error(
+    'Missing required environment variables: JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set'
+  );
+}
+
 export const Config = Object.freeze(config);

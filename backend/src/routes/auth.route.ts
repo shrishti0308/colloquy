@@ -17,7 +17,7 @@ router.use(authLimiter);
  * /auth/register:
  *   post:
  *     summary: Register a new user
- *     desription: Register a new user with the provided details, sends a welccome email, returns User, Access Token, and Refresh Token Cookie.
+ *     description: Register a new user with the provided details, sends a welccome email, returns User, Access Token, and Refresh Token Cookie.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
