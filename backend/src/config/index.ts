@@ -15,7 +15,7 @@ const config = {
   API_PREFIX: process.env.API_PREFIX || '/api/v1',
 
   // --- Database ---
-  DB_URI: process.env.DB_URI || 'mongodb://localhost:27017/backend_template',
+  DB_URI: process.env.DB_URI || 'mongodb://localhost:27017/colloquy',
 };
 
 export const Config = Object.freeze(config);
