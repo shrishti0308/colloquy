@@ -20,6 +20,10 @@ const config = {
 
   // --- Security ---
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10),
+  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
+  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
 
   // --- Mail Service (Nodemailer) ---
   MAIL_HOST: process.env.MAIL_HOST,
@@ -28,5 +32,11 @@ const config = {
   MAIL_PASS: process.env.MAIL_PASS,
   MAIL_FROM: process.env.MAIL_FROM,
 };
+
+if (!config.JWT_ACCESS_SECRET || !config.JWT_REFRESH_SECRET) {
+  throw new Error(
+    'Missing required environment variables: JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set'
+  );
+}
 
 export const Config = Object.freeze(config);
