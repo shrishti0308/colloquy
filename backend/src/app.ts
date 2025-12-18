@@ -7,6 +7,7 @@ import { Config } from './config';
 import { swaggerSpecs } from './config/swagger';
 import { generalLimiter } from './middlewares/rateLimiter';
 import { requestLogger } from './middlewares/requestLogger';
+import router from './routes';
 import ApiError from './utils/apiError';
 import logger from './utils/logger';
 
@@ -85,6 +86,7 @@ app.get('/health', (req: Request, res: Response) => {
 
 // API Routes
 app.use(Config.API_PREFIX, generalLimiter);
+app.use(Config.API_PREFIX, router);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
