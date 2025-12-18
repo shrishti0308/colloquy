@@ -1,7 +1,14 @@
 import path from 'path';
 import swaggerJSDoc from 'swagger-jsdoc';
 import { Config } from '.';
+import {
+  ForgotPasswordBody,
+  LoginBody,
+  RegisterBody,
+  ResetPasswordBody,
+} from '../docs/auth.schema';
 import { responses } from '../docs/responses';
+import { UserSchema } from '../docs/user.schema';
 
 const options: swaggerJSDoc.Options = {
   definition: {
@@ -53,6 +60,11 @@ const options: swaggerJSDoc.Options = {
             },
           },
         },
+        User: UserSchema,
+        RegisterBody: RegisterBody,
+        LoginBody: LoginBody,
+        ForgotPasswordBody: ForgotPasswordBody,
+        ResetPasswordBody: ResetPasswordBody,
       },
       responses: responses,
     },
