@@ -88,7 +88,14 @@ app.get('/health', (req: Request, res: Response) => {
 app.use(Config.API_PREFIX, generalLimiter);
 app.use(Config.API_PREFIX, router);
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+if (!Config.IS_PRODUCTION) {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+  logger.info('Swagger documentation available at /api-docs');
+} else {
+  app.use('/api-docs', (req: Request, res: Response) => {
+    res.status(404).json({ message: 'Not Found' });
+  });
+}
 
 // Not Found Route
 app.use((req: Request, res: Response, next: NextFunction) => {
