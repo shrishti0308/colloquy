@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { serve } from 'inngest/express';
+import { Config } from '../config';
 import { inngest } from '../config/inngest';
 import { inngestFunctions } from '../services/inngest.service';
 
@@ -11,6 +12,7 @@ router.use(
   serve({
     client: inngest,
     functions: inngestFunctions,
+    signingKey: Config.INNGEST_SIGNING_KEY,
   })
 );
 

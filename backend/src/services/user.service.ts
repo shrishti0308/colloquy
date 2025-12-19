@@ -1,7 +1,6 @@
-import { FilterQuery } from 'mongoose';
+import { inngest } from '../config/inngest';
 import UserModel, { IUser } from '../models/user.model';
 import ApiError from '../utils/apiError';
-import { inngest } from '../config/inngest';
 import logger from '../utils/logger';
 
 /**
@@ -150,6 +149,7 @@ export const updateMyProfile = async (
         data: {
           userId: user.id,
           name: user.name,
+          role: user.role,
         },
       });
       logger.info(`[Inngest] Event sent for user update: ${user.id}`);

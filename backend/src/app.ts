@@ -8,9 +8,9 @@ import { swaggerSpecs } from './config/swagger';
 import { generalLimiter } from './middlewares/rateLimiter';
 import { requestLogger } from './middlewares/requestLogger';
 import router from './routes';
+import inngestRouter from './routes/inngest.route';
 import ApiError from './utils/apiError';
 import logger from './utils/logger';
-import inngestRouter from './routes/inngest.router';
 
 const app: Application = express();
 
