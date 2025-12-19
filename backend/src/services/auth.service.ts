@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { inngest } from '../config/inngest';
 import UserModel, { IUser } from '../models/user.model';
 import ApiError from '../utils/apiError';
 import {
@@ -7,12 +8,6 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from '../utils/jwt';
-import {
-  sendLoginAlertEmail,
-  sendPasswordResetEmail,
-  sendWelcomeEmail,
-} from './mail.service';
-import { inngest } from '../config/inngest';
 import logger from '../utils/logger';
 
 interface IAuthResponse {
@@ -71,11 +66,9 @@ export const register = async (
 
   await newUser.save();
 
-  // -- Send welcome email --
-  sendWelcomeEmail(newUser.email, newUser.name);
-
   // -- Emit Inngest event for user creation --
   try {
+    // Create user in Stream
     await inngest.send({
       name: 'colloquy/user.created',
       data: {
@@ -84,7 +77,17 @@ export const register = async (
         role: newUser.role,
       },
     });
-    logger.info(`[Inngest] Event sent for user creation: ${newUser.id}`);
+
+    // Send welcome email
+    await inngest.send({
+      name: 'colloquy/email.welcome',
+      data: {
+        email: newUser.email,
+        name: newUser.name,
+      },
+    });
+
+    logger.info(`[Inngest] Events sent for user creation: ${newUser.id}`);
   } catch (error) {
     logger.error(`[Inngest] Failed to send user creation event: ${error}`);
     // Don't throw - registration should succeed even if event fails
@@ -117,8 +120,21 @@ export const login = async (
     throw new ApiError(401, 'Invalid email or password');
   }
 
-  // -- Send login alert email --
-  sendLoginAlertEmail(user.email, loginInfo.ip, loginInfo.userAgent);
+  // -- Emit Inngest event for login alert email --
+  try {
+    await inngest.send({
+      name: 'colloquy/email.login_alert',
+      data: {
+        email: user.email,
+        ip: loginInfo.ip,
+        userAgent: loginInfo.userAgent,
+      },
+    });
+    logger.info(`[Inngest] Login alert event sent for user: ${user.id}`);
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send login alert event: ${error}`);
+    // Don't throw - login should succeed even if event fails
+  }
 
   return generateAndSaveTokens(user);
 };
@@ -197,11 +213,25 @@ export const forgotPasswordService = async (email: string): Promise<void> => {
   try {
     await user.save();
 
-    sendPasswordResetEmail(user.email, plainToken);
+    // -- Emit Inngest event for password reset email --
+    await inngest.send({
+      name: 'colloquy/email.password_reset',
+      data: {
+        email: user.email,
+        token: plainToken,
+      },
+    });
+
+    logger.info(
+      `[Inngest] Password reset email event sent for user: ${user.id}`
+    );
   } catch (error) {
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
+    logger.error(
+      `[Inngest] Failed to send password reset email event: ${error}`
+    );
     throw new ApiError(500, 'Error sending password reset email');
   }
 };
@@ -231,6 +261,25 @@ export const resetPasswordService = async (
   user.passwordResetExpires = undefined;
 
   await user.save();
+
+  // -- Emit Inngest event for password change confirmation email --
+  try {
+    await inngest.send({
+      name: 'colloquy/email.password_reset_confirmation',
+      data: {
+        email: user.email,
+      },
+    });
+
+    logger.info(
+      `[Inngest] Event sent for password change confirmation email: ${user.id}`
+    );
+  } catch (error) {
+    logger.error(
+      `[Inngest] Failed to send password change confirmation email event: ${error}`
+    );
+    // Don't throw - password change should succeed even if event fails
+  }
 
   return generateAndSaveTokens(user);
 };

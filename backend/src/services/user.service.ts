@@ -185,4 +185,23 @@ export const changeMyPassword = async (
 
   user.password = newPassword;
   await user.save();
+
+  // -- Emit Inngest event for password change confirmation email --
+  try {
+    await inngest.send({
+      name: 'colloquy/email.password_reset_confirmation',
+      data: {
+        email: user.email,
+      },
+    });
+
+    logger.info(
+      `[Inngest] Event sent for password change confirmation email: ${user.id}`
+    );
+  } catch (error) {
+    logger.error(
+      `[Inngest] Failed to send password change confirmation email event: ${error}`
+    );
+    // Don't throw - password change should succeed even if event fails
+  }
 };

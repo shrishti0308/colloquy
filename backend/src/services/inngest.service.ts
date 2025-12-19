@@ -1,6 +1,12 @@
 import { inngest } from '../config/inngest';
-import { deleteStreamUser, upsertStreamUser } from './stream.service';
 import logger from '../utils/logger';
+import {
+  sendLoginAlertEmail as sendLoginAlertEmailHelper,
+  sendPasswordResetConfirmationEmail as sendPasswordResetConfirmationEmailHelper,
+  sendPasswordResetEmail as sendPasswordResetEmailHelper,
+  sendWelcomeEmail as sendWelcomeEmailHelper,
+} from './mail.service';
+import { deleteStreamUser, upsertStreamUser } from './stream.service';
 
 /**
  * Sync user to Stream when created
@@ -104,9 +110,121 @@ const updateUserInStream = inngest.createFunction(
   }
 );
 
+/**
+ * Send welcome email when user registers
+ */
+const sendWelcomeEmail = inngest.createFunction(
+  {
+    id: 'send-welcome-email',
+    retries: 3, // Retry up to 3 times on failure
+  },
+  { event: 'colloquy/email.welcome' },
+  async ({ event }) => {
+    try {
+      const { email, name } = event.data;
+
+      logger.info(`[Inngest] Sending welcome email to ${email}`);
+
+      await sendWelcomeEmailHelper(email, name);
+
+      logger.info(`[Inngest] Welcome email sent successfully to ${email}`);
+    } catch (error) {
+      logger.error(`[Inngest] Error sending welcome email: ${error}`);
+      throw error; // Inngest will retry
+    }
+  }
+);
+
+/**
+ * Send login alert email
+ */
+const sendLoginAlertEmail = inngest.createFunction(
+  {
+    id: 'send-login-alert',
+    retries: 3,
+  },
+  { event: 'colloquy/email.login_alert' },
+  async ({ event }) => {
+    try {
+      const { email, ip, userAgent } = event.data;
+
+      logger.info(`[Inngest] Sending login alert to ${email}`);
+
+      await sendLoginAlertEmailHelper(email, ip, userAgent);
+
+      logger.info(`[Inngest] Login alert sent successfully to ${email}`);
+    } catch (error) {
+      logger.error(`[Inngest] Error sending login alert: ${error}`);
+      throw error; // Inngest will retry
+    }
+  }
+);
+
+/**
+ * Send password reset email
+ */
+const sendPasswordResetEmail = inngest.createFunction(
+  {
+    id: 'send-password-reset',
+    retries: 3,
+  },
+  { event: 'colloquy/email.password_reset' },
+  async ({ event }) => {
+    try {
+      const { email, token } = event.data;
+
+      logger.info(`[Inngest] Sending password reset email to ${email}`);
+
+      await sendPasswordResetEmailHelper(email, token);
+
+      logger.info(
+        `[Inngest] Password reset email sent successfully to ${email}`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error sending password reset email: ${error}`);
+      throw error; // Inngest will retry
+    }
+  }
+);
+
+/**
+ * Send password reset confirmation email
+ */
+const sendPasswordResetConfirmationEmail = inngest.createFunction(
+  {
+    id: 'send-password-reset-confirmation',
+    retries: 3,
+  },
+  { event: 'colloquy/email.password_reset_confirmation' },
+  async ({ event }) => {
+    try {
+      const { email } = event.data;
+
+      logger.info(
+        `[Inngest] Sending password reset confirmation email to ${email}`
+      );
+
+      await sendPasswordResetConfirmationEmailHelper(email);
+
+      logger.info(
+        `[Inngest] Password reset confirmation email sent successfully to ${email}`
+      );
+    } catch (error) {
+      logger.error(
+        `[Inngest] Error sending password reset confirmation email: ${error}`
+      );
+      throw error; // Inngest will retry
+    }
+  }
+);
+
 export const inngestFunctions = [
   syncUserToStream,
   removeUserFromStream,
   restoreUserToStream,
   updateUserInStream,
+  sendWelcomeEmail,
+  sendLoginAlertEmail,
+  sendPasswordResetEmail,
+  sendPasswordResetConfirmationEmail,
 ];

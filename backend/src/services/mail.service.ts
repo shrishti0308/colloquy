@@ -3,6 +3,7 @@ import { Config } from '../config';
 import logger from '../utils/logger';
 import {
   getLoginAlertEmailHtml,
+  getPasswordChangedEmailHtml,
   getPasswordResetEmailHtml,
   getWelcomeEmailHtml,
 } from '../utils/mailTemplates';
@@ -38,7 +39,7 @@ export interface IMailOptions {
  * Send an email (Fire-And-Forget function).
  * @param options - The mail options (to, subject, html, from)
  */
-export const sendEmail = (options: IMailOptions) => {
+export const sendEmail = async (options: IMailOptions): Promise<void> => {
   const mailOptions = {
     from: options.from || Config.MAIL_FROM,
     to: options.to,
@@ -46,16 +47,15 @@ export const sendEmail = (options: IMailOptions) => {
     html: options.html,
   };
 
-  transport
-    .sendMail(mailOptions)
-    .then((info) => {
-      logger.info(`[Mail] Email sent: ${info.messageId} to ${options.to}`);
-    })
-    .catch((err) => {
-      logger.warn(
-        `[Mail] Error sending email to ${options.to} : ${err.message}`
-      );
-    });
+  try {
+    const info = await transport.sendMail(mailOptions);
+    logger.info(`[Mail] Email sent: ${info.messageId} to ${options.to}`);
+  } catch (error) {
+    logger.error(
+      `[Mail] Error sending email to ${options.to}: ${error instanceof Error ? error.message : error}`
+    );
+    throw error; // Re-throw to let caller handle
+  }
 };
 
 /**
@@ -67,7 +67,7 @@ export const sendWelcomeEmail = (email: string, name: string) => {
   const subject = 'Welcome to Our Service!';
   const html = getWelcomeEmailHtml(name);
 
-  sendEmail({
+  return sendEmail({
     to: email,
     subject: subject,
     html: html,
@@ -88,7 +88,7 @@ export const sendLoginAlertEmail = (
   const subject = 'Security Alert: New Login to Your Account';
   const html = getLoginAlertEmailHtml(ip, device);
 
-  sendEmail({
+  return sendEmail({
     to: email,
     subject: subject,
     html: html,
@@ -104,7 +104,22 @@ export const sendPasswordResetEmail = (email: string, token: string) => {
   const subject = 'Password Reset Request';
   const html = getPasswordResetEmailHtml(token);
 
-  sendEmail({
+  return sendEmail({
+    to: email,
+    subject: subject,
+    html: html,
+  });
+};
+
+/**
+ * Send a password reset confirmation email
+ * @param email - Recipient email address
+ */
+export const sendPasswordResetConfirmationEmail = (email: string) => {
+  const subject = 'Your Password Has Been Reset';
+  const html = getPasswordChangedEmailHtml();
+
+  return sendEmail({
     to: email,
     subject: subject,
     html: html,
