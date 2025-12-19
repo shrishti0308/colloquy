@@ -2,7 +2,6 @@ import { inngest } from '../config/inngest';
 import UserModel, { IUser } from '../models/user.model';
 import ApiError from '../utils/apiError';
 import logger from '../utils/logger';
-import { sendPasswordResetConfirmationEmail } from './mail.service';
 
 /**
  * Get all users.
@@ -187,6 +186,22 @@ export const changeMyPassword = async (
   user.password = newPassword;
   await user.save();
 
-  // Send password change confirmation email
-  sendPasswordResetConfirmationEmail(user.email);
+  // -- Emit Inngest event for password change confirmation email --
+  try {
+    await inngest.send({
+      name: 'colloquy/email.password_reset_confirmation',
+      data: {
+        email: user.email,
+      },
+    });
+
+    logger.info(
+      `[Inngest] Event sent for password change confirmation email: ${user.id}`
+    );
+  } catch (error) {
+    logger.error(
+      `[Inngest] Failed to send password change confirmation email event: ${error}`
+    );
+    // Don't throw - password change should succeed even if event fails
+  }
 };
