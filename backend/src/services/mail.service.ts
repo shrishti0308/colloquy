@@ -3,6 +3,7 @@ import { Config } from '../config';
 import logger from '../utils/logger';
 import {
   getLoginAlertEmailHtml,
+  getPasswordChangedEmailHtml,
   getPasswordResetEmailHtml,
   getWelcomeEmailHtml,
 } from '../utils/mailTemplates';
@@ -103,6 +104,21 @@ export const sendLoginAlertEmail = (
 export const sendPasswordResetEmail = (email: string, token: string) => {
   const subject = 'Password Reset Request';
   const html = getPasswordResetEmailHtml(token);
+
+  sendEmail({
+    to: email,
+    subject: subject,
+    html: html,
+  });
+};
+
+/**
+ * Send a password reset confirmation email
+ * @param email - Recipient email address
+ */
+export const sendPasswordResetConfirmationEmail = (email: string) => {
+  const subject = 'Your Password Has Been Reset';
+  const html = getPasswordChangedEmailHtml();
 
   sendEmail({
     to: email,

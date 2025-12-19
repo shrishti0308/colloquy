@@ -2,6 +2,7 @@ import { inngest } from '../config/inngest';
 import UserModel, { IUser } from '../models/user.model';
 import ApiError from '../utils/apiError';
 import logger from '../utils/logger';
+import { sendPasswordResetConfirmationEmail } from './mail.service';
 
 /**
  * Get all users.
@@ -185,4 +186,7 @@ export const changeMyPassword = async (
 
   user.password = newPassword;
   await user.save();
+
+  // Send password change confirmation email
+  sendPasswordResetConfirmationEmail(user.email);
 };

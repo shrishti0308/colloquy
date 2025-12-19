@@ -200,3 +200,26 @@ export const getPasswordResetEmailHtml = (token: string): string => {
 
   return htmlTemplate(subject, content);
 };
+
+/**
+ * Generates the HTML for a changed password email.
+ */
+export const getPasswordChangedEmailHtml = (): string => {
+  const subject = 'Your Colloquy password has been changed';
+
+  const content = `
+    <p style="
+      font-size: 14px;
+      line-height: 1.6;
+      color: #1E2A38;
+    ">
+      This is a confirmation that your password has been successfully changed.
+    </p>
+
+    <p style="color: #C62828; font-weight: 500;">
+      If you did not make this change, please reset your password immediately and contact support.
+    </p>
+  `;
+
+  return htmlTemplate(subject, content);
+};
