@@ -8,6 +8,7 @@ import { swaggerSpecs } from './config/swagger';
 import { generalLimiter } from './middlewares/rateLimiter';
 import { requestLogger } from './middlewares/requestLogger';
 import router from './routes';
+import inngestRouter from './routes/inngest.route';
 import ApiError from './utils/apiError';
 import logger from './utils/logger';
 
@@ -83,6 +84,9 @@ app.get('/health', (req: Request, res: Response) => {
     uptime: process.uptime(),
   });
 });
+
+//INNGEST Routes
+app.use(inngestRouter);
 
 // API Routes
 app.use(Config.API_PREFIX, generalLimiter);

@@ -1,6 +1,7 @@
-import { FilterQuery } from 'mongoose';
+import { inngest } from '../config/inngest';
 import UserModel, { IUser } from '../models/user.model';
 import ApiError from '../utils/apiError';
+import logger from '../utils/logger';
 
 /**
  * Get all users.
@@ -60,6 +61,20 @@ export const deleteUser = async (id: string): Promise<void> => {
   const user = await getUserById(id);
 
   await user.delete();
+
+  try {
+    await inngest.send({
+      name: 'colloquy/user.deleted',
+      data: {
+        userId: user.id,
+        name: user.name,
+      },
+    });
+    logger.info(`[Inngest] Event sent for user deletion: ${user.id}`);
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send user deletion event: ${error}`);
+    // Don't throw - soft deletion should succeed even if event fails
+  }
 };
 
 /**
@@ -75,6 +90,22 @@ export const restoreUser = async (id: string): Promise<IUser> => {
   }
 
   await user.restore();
+
+  // Re-sync to Stream after restoration
+  try {
+    await inngest.send({
+      name: 'colloquy/user.restored',
+      data: {
+        userId: user.id,
+        name: user.name,
+        role: user.role,
+      },
+    });
+    logger.info(`[Inngest] Event sent for user restoration: ${user.id}`);
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send user restoration event: ${error}`);
+  }
+
   return user;
 };
 
@@ -109,6 +140,24 @@ export const updateMyProfile = async (
   }
 
   await user.save();
+
+  // Update Stream user if name changed
+  if (updateBody.name) {
+    try {
+      await inngest.send({
+        name: 'colloquy/user.updated',
+        data: {
+          userId: user.id,
+          name: user.name,
+          role: user.role,
+        },
+      });
+      logger.info(`[Inngest] Event sent for user update: ${user.id}`);
+    } catch (error) {
+      logger.error(`[Inngest] Failed to send user update event: ${error}`);
+    }
+  }
+
   return user;
 };
 

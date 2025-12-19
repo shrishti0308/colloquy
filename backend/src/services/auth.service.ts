@@ -12,6 +12,8 @@ import {
   sendPasswordResetEmail,
   sendWelcomeEmail,
 } from './mail.service';
+import { inngest } from '../config/inngest';
+import logger from '../utils/logger';
 
 interface IAuthResponse {
   user: Omit<IUser, 'comparePassword'>;
@@ -71,6 +73,22 @@ export const register = async (
 
   // -- Send welcome email --
   sendWelcomeEmail(newUser.email, newUser.name);
+
+  // -- Emit Inngest event for user creation --
+  try {
+    await inngest.send({
+      name: 'colloquy/user.created',
+      data: {
+        userId: newUser.id,
+        name: newUser.name,
+        role: newUser.role,
+      },
+    });
+    logger.info(`[Inngest] Event sent for user creation: ${newUser.id}`);
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send user creation event: ${error}`);
+    // Don't throw - registration should succeed even if event fails
+  }
 
   return generateAndSaveTokens(newUser);
 };
