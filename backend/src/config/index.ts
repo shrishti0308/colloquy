@@ -31,11 +31,40 @@ const config = {
   MAIL_USER: process.env.MAIL_USER,
   MAIL_PASS: process.env.MAIL_PASS,
   MAIL_FROM: process.env.MAIL_FROM,
+
+  // --- Stream & Inngest Configuration ---
+  STREAM_API_KEY: process.env.STREAM_API_KEY,
+  STREAM_API_SECRET: process.env.STREAM_API_SECRET,
+  INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
+  INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
 };
 
 if (!config.JWT_ACCESS_SECRET || !config.JWT_REFRESH_SECRET) {
   throw new Error(
     'Missing required environment variables: JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set'
+  );
+}
+
+if (!config.STREAM_API_KEY || !config.STREAM_API_SECRET) {
+  throw new Error(
+    'Missing required environment variables: STREAM_API_KEY and STREAM_API_SECRET must be set'
+  );
+}
+
+if (!config.INNGEST_EVENT_KEY || !config.INNGEST_SIGNING_KEY) {
+  throw new Error(
+    'Missing required environment variables: INNGEST_EVENT_KEY and INNGEST_SIGNING_KEY must be set'
+  );
+}
+
+if (
+  !config.MAIL_HOST ||
+  !config.MAIL_PORT ||
+  !config.MAIL_USER ||
+  !config.MAIL_PASS
+) {
+  throw new Error(
+    'Missing required environment variables: MAIL_HOST, MAIL_PORT, MAIL_USER, and MAIL_PASS must be set'
   );
 }
 
