@@ -1,0 +1,139 @@
+import { FilterQuery } from 'mongoose';
+import UserModel, { IUser } from '../models/user.model';
+import ApiError from '../utils/apiError';
+
+/**
+ * Get all users.
+ * @returns List of all users
+ */
+export const getAllUsers = async (): Promise<IUser[]> => {
+  const users = await UserModel.find();
+  return users;
+};
+
+/**
+ * Get user by ID.
+ * @param id - ID of the user to retrieve
+ * @returns The user with the specified ID
+ */
+export const getUserById = async (id: string): Promise<IUser> => {
+  const user = await UserModel.findOne({ id });
+
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  return user;
+};
+
+/**
+ * Update user by ID.
+ * @param id - ID of the user to update
+ * @param updateBody - Fields to update (name, email, role)
+ * @returns The updated user
+ */
+export const updateUser = async (
+  id: string,
+  updateBody: Partial<Pick<IUser, 'name' | 'email' | 'role'>>
+): Promise<IUser> => {
+  const user = await getUserById(id);
+
+  if (
+    updateBody.email &&
+    updateBody.email !== user.email &&
+    (await UserModel.findOne({ email: updateBody.email }))
+  ) {
+    throw new ApiError(409, 'Email already in use');
+  }
+
+  Object.assign(user, updateBody);
+  await user.save();
+
+  return user;
+};
+
+/**
+ * Delete user by ID (Soft Deletion).
+ * @param id - ID of the user to delete
+ */
+export const deleteUser = async (id: string): Promise<void> => {
+  const user = await getUserById(id);
+
+  await user.delete();
+};
+
+/**
+ * Restore a soft-deleted user by ID.
+ * @param id - ID of the user to restore
+ * @returns The restored user
+ */
+export const restoreUser = async (id: string): Promise<IUser> => {
+  const user = await UserModel.findOneDeleted({ id });
+
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  await user.restore();
+  return user;
+};
+
+/**
+ * Get all soft-deleted users.
+ * @returns List of all soft-deleted users
+ */
+export const getDeletedUsers = async (): Promise<IUser[]> => {
+  const users = await UserModel.findDeleted();
+
+  return users;
+};
+
+/**
+ * Update the profile of the currently authenticated user.
+ * @param userId - ID of the user to update
+ * @param updateBody - Fields to update (name)
+ * @returns The updated user
+ */
+export const updateMyProfile = async (
+  userId: string,
+  updateBody: Partial<Pick<IUser, 'name'>>
+): Promise<IUser> => {
+  const user = await UserModel.findOne({ id: userId });
+
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  if (updateBody.name) {
+    user.name = updateBody.name;
+  }
+
+  await user.save();
+  return user;
+};
+
+/**
+ * Change the password of the currently authenticated user.
+ * @param userId - ID of the user changing the password
+ * @param oldPassword - Current password of the user
+ * @param newPassword - New password to set
+ */
+export const changeMyPassword = async (
+  userId: string,
+  oldPassword: string,
+  newPassword: string
+): Promise<void> => {
+  const user = await UserModel.findOne({ id: userId }).select('+password');
+
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const isMatch = await user.comparePassword(oldPassword);
+  if (!isMatch) {
+    throw new ApiError(401, 'Old password is incorrect');
+  }
+
+  user.password = newPassword;
+  await user.save();
+};

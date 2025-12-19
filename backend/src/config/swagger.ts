@@ -8,7 +8,13 @@ import {
   ResetPasswordBody,
 } from '../docs/auth.schema';
 import { responses } from '../docs/responses';
-import { UserSchema } from '../docs/user.schema';
+import {
+  AdminUpdateUserBody,
+  ChangePasswordBody,
+  UpdateProfileBody,
+  UserSchema,
+} from '../docs/user.schema';
+import { parameters } from '../docs/parameters';
 
 const options: swaggerJSDoc.Options = {
   definition: {
@@ -65,6 +71,12 @@ const options: swaggerJSDoc.Options = {
         LoginBody: LoginBody,
         ForgotPasswordBody: ForgotPasswordBody,
         ResetPasswordBody: ResetPasswordBody,
+        UpdateProfileBody: UpdateProfileBody,
+        ChangePasswordBody: ChangePasswordBody,
+        AdminUpdateUserBody: AdminUpdateUserBody,
+      },
+      parameters: {
+        ...parameters,
       },
       responses: responses,
     },
