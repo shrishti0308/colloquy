@@ -1,4 +1,5 @@
 import { inngest } from '../config/inngest';
+import UserModel from '../models/user.model';
 import logger from '../utils/logger';
 import {
   sendLoginAlertEmail as sendLoginAlertEmailHelper,
@@ -218,6 +219,43 @@ const sendPasswordResetConfirmationEmail = inngest.createFunction(
   }
 );
 
+/**
+ * Clean up expired password reset tokens (runs daily)
+ */
+const cleanupExpiredTokens = inngest.createFunction(
+  {
+    id: 'cleanup-expired-tokens',
+  },
+  { cron: '0 0 * * *' }, // Run every day at midnight
+  async () => {
+    try {
+      logger.info(
+        '[Inngest] Starting cleanup of expired password reset tokens'
+      );
+
+      const result = await UserModel.updateMany(
+        {
+          passwordResetExpires: { $lt: new Date() },
+          passwordResetToken: { $exists: true },
+        },
+        {
+          $unset: {
+            passwordResetToken: 1,
+            passwordResetExpires: 1,
+          },
+        }
+      );
+
+      logger.info(
+        `[Inngest] Cleaned up ${result.modifiedCount} expired password reset tokens`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error cleaning up expired tokens: ${error}`);
+      throw error;
+    }
+  }
+);
+
 export const inngestFunctions = [
   syncUserToStream,
   removeUserFromStream,
@@ -227,4 +265,5 @@ export const inngestFunctions = [
   sendLoginAlertEmail,
   sendPasswordResetEmail,
   sendPasswordResetConfirmationEmail,
+  cleanupExpiredTokens,
 ];
