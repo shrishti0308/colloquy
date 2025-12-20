@@ -180,7 +180,10 @@ problemSchema.index({ difficulty: 1, visibility: 1 });
 problemSchema.index({ tags: 1 });
 problemSchema.index({ usageCount: -1 });
 problemSchema.index({ title: 'text', description: 'text' });
-problemSchema.index({ title: 1 }, { unique: true });
+problemSchema.index(
+  { title: 1 },
+  { unique: true, partialFilterExpression: { deleted: false } }
+);
 
 // Soft delete plugin
 problemSchema.plugin(MongooseDelete, {
