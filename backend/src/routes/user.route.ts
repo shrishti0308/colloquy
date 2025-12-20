@@ -2,6 +2,12 @@ import { Router } from 'express';
 import * as userController from '../controllers/user.controller';
 import { authorizeRoles, protect } from '../middlewares/auth.middleware';
 import { UserRole } from '../models/user.model';
+import {
+  adminUpdateUserSchema,
+  changePasswordSchema,
+  updateProfileSchema,
+} from '../validators/user.validator';
+import { validate } from '../middlewares/joi.middleware';
 
 const router = Router();
 
@@ -97,7 +103,7 @@ router.use(protect);
 router
   .route('/me')
   .get(userController.getMe)
-  .put(userController.updateMyProfile)
+  .put(validate(updateProfileSchema), userController.updateMyProfile)
   .delete(userController.deleteMyAccount);
 
 /**
@@ -146,7 +152,11 @@ router
  *             schema:
  *               $ref: '#/components/schemas/ApiError'
  */
-router.put('/me/password', userController.changeMyPassword);
+router.put(
+  '/me/password',
+  validate(changePasswordSchema),
+  userController.changeMyPassword
+);
 
 // --- Admin-only routes ---
 router.use(authorizeRoles(UserRole.ADMIN));
@@ -368,7 +378,7 @@ router.put('/:id/restore', userController.restoreUser);
 router
   .route('/:id')
   .get(userController.getUserById)
-  .put(userController.updateUser)
+  .put(validate(adminUpdateUserSchema), userController.updateUser)
   .delete(userController.deleteUser);
 
 export default router;
