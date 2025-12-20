@@ -5,10 +5,11 @@ import logger from '../utils/logger';
 
 class LogService {
   private logsDir: string;
+  private initialized: Promise<void>;
 
   constructor() {
     this.logsDir = path.join(process.cwd(), 'logs');
-    this.initializeLogsDirectory();
+    this.initialized = this.initializeLogsDirectory();
   }
 
   private async initializeLogsDirectory(): Promise<void> {
@@ -41,6 +42,7 @@ class LogService {
 
   async logFrontendError(logData: FrontendLogData): Promise<void> {
     try {
+      await this.initialized;
       const fileName = this.getLogFileName(logData.level);
       const filePath = path.join(this.logsDir, fileName);
       const logEntry = this.formatLogEntry(logData);

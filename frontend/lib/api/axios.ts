@@ -81,12 +81,13 @@ class ApiClient {
           });
         }
 
-        // Skip token refresh for auth endpoints
+        // Skip token refresh for auth endpoints (including refresh itself to prevent infinite loop)
         const isAuthEndpoint =
           originalRequest?.url?.includes("/auth/login") ||
           originalRequest?.url?.includes("/auth/register") ||
           originalRequest?.url?.includes("/auth/forgot-password") ||
-          originalRequest?.url?.includes("/auth/reset-password");
+          originalRequest?.url?.includes("/auth/reset-password") ||
+          originalRequest?.url?.includes("/auth/refresh"); // Prevent infinite loop
 
         // Handle token refresh
         if (
@@ -114,7 +115,7 @@ class ApiClient {
           try {
             // Call refresh endpoint
             const response = await axios.post(
-              `/api/auth/refresh`,
+              "/api/auth/refresh",
               {},
               { withCredentials: true }
             );
@@ -135,7 +136,7 @@ class ApiClient {
             this.processQueue(refreshError);
             tokenStorage.clearAll();
 
-            // Redirect to login page
+            // Simple window redirect - no questions asked
             if (typeof window !== "undefined") {
               window.location.href = "/login";
             }
@@ -171,9 +172,10 @@ class ApiClient {
 
     if (limit && remaining && reset) {
       this.rateLimitInfo = {
-        limit: parseInt(limit),
-        remaining: parseInt(remaining),
-        reset: parseInt(reset) * 1000, // Convert to milliseconds
+        limit: parseInt(limit, 10),
+        remaining: parseInt(remaining, 10),
+        // Convert reset to absolute timestamp (milliseconds)
+        reset: Date.now() + parseInt(reset, 10) * 1000,
       };
     }
   }

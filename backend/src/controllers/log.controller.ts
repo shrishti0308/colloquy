@@ -28,11 +28,14 @@ export const logController = {
   getRecentLogs: asyncHandler(async (req: Request, res: Response) => {
     const { level, limit } = req.query;
 
-    const logs = await logService.getRecentLogs(
-      level as string,
-      limit ? parseInt(limit as string) : 100
-    );
-
+    const parsedLimit = limit ? parseInt(limit as string, 10) : 100;
+    if (limit && isNaN(parsedLimit)) {
+      res
+        .status(400)
+        .json(new ApiResponse(400, null, 'Invalid limit parameter'));
+      return;
+    }
+    const logs = await logService.getRecentLogs(level as string, parsedLimit);
     res
       .status(200)
       .json(new ApiResponse(200, logs, 'Logs retrieved successfully'));
@@ -45,9 +48,14 @@ export const logController = {
    */
   clearOldLogs: asyncHandler(async (req: Request, res: Response) => {
     const { daysToKeep } = req.body;
-
-    await logService.clearOldLogs(daysToKeep || 30);
-
+    const days = daysToKeep || 30;
+    if (typeof days !== 'number' || days < 0) {
+      res
+        .status(400)
+        .json(new ApiResponse(400, null, 'Invalid daysToKeep parameter'));
+      return;
+    }
+    await logService.clearOldLogs(days);
     res
       .status(200)
       .json(new ApiResponse(200, null, 'Old logs cleared successfully'));
