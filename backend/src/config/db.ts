@@ -11,6 +11,10 @@ export const connectDB = async () => {
   try {
     const conn = await mongoose.connect(Config.DB_URI);
     logger.info(`[Database] Connected to MongoDB: ${conn.connection.host}`);
+
+    // Sync indexes
+    await mongoose.connection.syncIndexes();
+    logger.info('[Database] Indexes synchronized');
   } catch (error) {
     const err = error as Error;
     logger.error(`[Error] Failed to connect to the database: ${err.message}`);

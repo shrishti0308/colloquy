@@ -15,6 +15,11 @@ import {
   UserSchema,
 } from '../docs/user.schema';
 import { parameters } from '../docs/parameters';
+import {
+  CreateProblemBody,
+  ProblemSchema,
+  UpdateProblemBody,
+} from '../docs/problem.schema';
 
 const options: swaggerJSDoc.Options = {
   definition: {
@@ -74,6 +79,9 @@ const options: swaggerJSDoc.Options = {
         UpdateProfileBody: UpdateProfileBody,
         ChangePasswordBody: ChangePasswordBody,
         AdminUpdateUserBody: AdminUpdateUserBody,
+        Problem: ProblemSchema,
+        CreateProblemBody: CreateProblemBody,
+        UpdateProblemBody: UpdateProblemBody,
       },
       parameters: {
         ...parameters,

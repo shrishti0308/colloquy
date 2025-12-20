@@ -32,4 +32,12 @@ export const responses = {
       },
     },
   },
+  ValidationError: {
+    description: 'Validation Error. Input data did not pass validation.',
+    content: {
+      'application/json': {
+        schema: { $ref: '#/components/schemas/ApiError' },
+      },
+    },
+  },
 };
