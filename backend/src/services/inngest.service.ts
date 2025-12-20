@@ -220,6 +220,60 @@ const sendPasswordResetConfirmationEmail = inngest.createFunction(
 );
 
 /**
+ * Handle problem creation event
+ */
+const handleProblemCreated = inngest.createFunction(
+  {
+    id: 'handle-problem-created',
+    retries: 3,
+  },
+  { event: 'colloquy/problem.created' },
+  async ({ event }) => {
+    try {
+      const { problemId, title, createdBy, visibility } = event.data;
+
+      logger.info(`[Inngest] Handling problem creation: ${problemId}`);
+
+      // TODO: Implement problem creation handling logic
+
+      logger.info(
+        `[Inngest] Problem ${problemId} creation handled successfully`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error handling problem creation: ${error}`);
+      throw error; // Inngest will retry
+    }
+  }
+);
+
+/**
+ * Handle problem deletion event
+ */
+const handleProblemDeleted = inngest.createFunction(
+  {
+    id: 'handle-problem-deleted',
+    retries: 3,
+  },
+  { event: 'colloquy/problem.deleted' },
+  async ({ event }) => {
+    try {
+      const { problemId, title, deletedBy } = event.data;
+
+      logger.info(`[Inngest] Handling problem deletion: ${problemId}`);
+
+      // TODO: Implement problem deletion handling logic
+
+      logger.info(
+        `[Inngest] Problem ${problemId} deletion handled successfully`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error handling problem deletion: ${error}`);
+      throw error; // Inngest will retry
+    }
+  }
+);
+
+/**
  * Clean up expired password reset tokens (runs daily)
  */
 const cleanupExpiredTokens = inngest.createFunction(
@@ -265,5 +319,7 @@ export const inngestFunctions = [
   sendLoginAlertEmail,
   sendPasswordResetEmail,
   sendPasswordResetConfirmationEmail,
+  handleProblemCreated,
+  handleProblemDeleted,
   cleanupExpiredTokens,
 ];
