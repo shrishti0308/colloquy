@@ -1,4 +1,5 @@
 import { API_CONFIG } from "@/config/constants";
+import { logger } from "@/services/logger.service";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error("Get user route error:", error);
+    logger.error("Get current user route error:", "API Route", error);
     return NextResponse.json(
       {
         success: false,

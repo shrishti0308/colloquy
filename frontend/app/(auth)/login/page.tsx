@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginInput, loginSchema } from '@/schemas/auth.schema';
+import { logger } from '@/services/logger.service';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -53,7 +54,7 @@ export default function LoginPage() {
       toast.success('Welcome back!');
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('Login error:', error);
+      logger.error('Login error:', 'Login Page', error);
       const errorMessage = error?.message || 'Invalid email or password';
       toast.error(errorMessage);
       setIsLoading(false);

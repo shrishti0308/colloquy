@@ -1,4 +1,5 @@
 import { API_CONFIG } from "@/config/constants";
+import { logger } from "@/services/logger.service";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     return nextResponse;
   } catch (error) {
-    console.error("Register route error:", error);
+    logger.error("Register route error:", "API Route", error);
     return NextResponse.json(
       {
         success: false,

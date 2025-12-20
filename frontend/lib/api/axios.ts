@@ -1,5 +1,6 @@
 import { API_CONFIG } from "@/config/constants";
 import { tokenStorage } from "@/lib/token-storage";
+import { logger } from "@/services/logger.service";
 import { ApiErrorResponse, RateLimitInfo } from "@/types/api.types";
 import axios, {
   AxiosError,
@@ -180,6 +181,14 @@ class ApiClient {
   private transformError(error: AxiosError<ApiErrorResponse>): any {
     if (error.response) {
       // Server responded with error
+      logger.error("API Error", "Axios Interceptor", {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response.status,
+        message: error.response.data?.message,
+        errors: error.response.data?.errors,
+      });
+
       return {
         message: error.response.data?.message || "An error occurred",
         statusCode: error.response.status,
@@ -188,6 +197,12 @@ class ApiClient {
       };
     } else if (error.request) {
       // Request made but no response
+      logger.error("Network Error", "Axios Interceptor", {
+        url: error.config?.url,
+        method: error.config?.method,
+        message: "No response received from server",
+      });
+
       return {
         message: "Network error. Please check your connection.",
         statusCode: 0,
@@ -195,6 +210,10 @@ class ApiClient {
       };
     } else {
       // Something else happened
+      logger.error("Unexpected Error", "Axios Interceptor", {
+        message: error.message,
+      });
+
       return {
         message: error.message || "An unexpected error occurred",
         statusCode: 0,

@@ -1,4 +1,5 @@
 import { API_CONFIG } from "@/config/constants";
+import { logger } from "@/services/logger.service";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Logout error:", error);
+    logger.error("Logout route error:", "API Route", error);
     return NextResponse.json(
       {
         success: false,

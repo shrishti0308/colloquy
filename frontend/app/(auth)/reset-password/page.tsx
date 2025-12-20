@@ -10,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
 import { ResetPasswordInput, resetPasswordSchema } from "@/schemas/auth.schema";
+import { logger } from "@/services/logger.service";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -89,7 +90,7 @@ export default function ResetPasswordPage() {
       toast.success("Password reset successful! You can now sign in.");
       router.push("/login");
     } catch (error: any) {
-      console.error("Reset password error:", error);
+      logger.error("Reset password error:", "Reset Password Page", error);
       const errorMessage = error?.message || "Invalid or expired reset code.";
       toast.error(errorMessage);
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { logger } from '@/services/logger.service';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -17,8 +18,7 @@ export default function Error({
 
   useEffect(() => {
     setMounted(true);
-    // TODO: Log the error to an error reporting service
-    console.error('Application error');
+    logger.error('Unhandled error occurred:', 'Error Boundary', error);
   }, [error]);
 
   const gifSrc =

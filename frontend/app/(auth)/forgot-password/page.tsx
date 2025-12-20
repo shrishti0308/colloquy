@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForgotPassword } from '@/hooks/auth/useForgotPassword';
 import { ForgotPasswordInput, forgotPasswordSchema } from '@/schemas/auth.schema';
+import { logger } from '@/services/logger.service';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -50,7 +51,7 @@ export default function ForgotPasswordPage() {
       setIsSubmitted(true);
       toast.success('Password reset email sent! Check your inbox.');
     } catch (error: any) {
-      console.error('Forgot password error:', error);
+      logger.error('Forgot password error:', 'Forgot Password Page', error);
       const errorMessage = error?.message || 'Failed to send reset email. Please check your email address.';
       toast.error(errorMessage);
     }
