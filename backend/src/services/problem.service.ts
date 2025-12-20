@@ -118,7 +118,6 @@ solution();`,
         starterCode: `package main
 
 import "fmt"
-import { model } from 'mongoose';
 
 func main() {
     // Write your code here
@@ -216,7 +215,7 @@ export const getAllProblems = async (
 
   // Apply search filter
   if (filters.search) {
-    query.$text = { $search: filters.search };
+    query.title = { $regex: filters.search, $options: 'i' };
   }
 
   const problems = await ProblemModel.find(query)
@@ -263,7 +262,7 @@ export const getProblemById = async (
   // Check access permissions
   if (
     problem.visibility === ProblemVisibility.PRIVATE &&
-    problem.createdBy !== userId
+    (problem.createdBy as any).id !== userId
   ) {
     throw new ApiError(403, 'You do not have access to this problem');
   }

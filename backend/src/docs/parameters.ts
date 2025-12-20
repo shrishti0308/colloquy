@@ -48,7 +48,7 @@ export const parameters = {
   SearchQuery: {
     name: 'search',
     in: 'query',
-    description: 'Search in problem title and description',
+    description: 'Search in problem title',
     required: false,
     schema: {
       type: 'string',

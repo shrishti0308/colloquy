@@ -151,7 +151,7 @@ router.get(
  */
 router
   .route('/')
-  .get(validate(problemQuerySchema), problemController.getAllProblems)
+  .get(validate(problemQuerySchema, 'query'), problemController.getAllProblems)
   .post(
     authorizeRoles(UserRole.INTERVIEWER, UserRole.ADMIN),
     validate(createProblemSchema),

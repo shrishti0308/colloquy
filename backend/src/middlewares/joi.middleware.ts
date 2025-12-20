@@ -19,7 +19,18 @@ export const validate = (
     }
 
     // Replace req[property] with validated & sanitized data
-    req[property] = value;
+    if (property === 'query') {
+      // req.query is read-only, so we need to redefine it
+      Object.defineProperty(req, 'query', {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    } else {
+      req[property] = value;
+    }
+
     next();
   };
 };
