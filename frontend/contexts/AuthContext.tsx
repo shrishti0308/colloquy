@@ -37,13 +37,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (data: ILoginData) => {
     const result = await loginMutation.mutateAsync(data);
     setUser(result.user);
-    router.push('/dashboard');
+    return result;
   };
 
   const register = async (data: IRegisterData) => {
     const result = await registerMutation.mutateAsync(data);
     setUser(result.user);
-    router.push('/dashboard');
+    return result;
   };
 
   const logout = async () => {

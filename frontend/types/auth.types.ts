@@ -29,8 +29,8 @@ export interface IAuthContext {
   user: IUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (data: ILoginData) => Promise<void>;
-  register: (data: IRegisterData) => Promise<void>;
+  login: (data: ILoginData) => Promise<IAuthResponse>;
+  register: (data: IRegisterData) => Promise<IAuthResponse>;
   logout: () => Promise<void>;
   updateUser: (user: IUser) => void;
 }

@@ -80,11 +80,19 @@ class ApiClient {
           });
         }
 
+        // Skip token refresh for auth endpoints
+        const isAuthEndpoint =
+          originalRequest?.url?.includes("/auth/login") ||
+          originalRequest?.url?.includes("/auth/register") ||
+          originalRequest?.url?.includes("/auth/forgot-password") ||
+          originalRequest?.url?.includes("/auth/reset-password");
+
         // Handle token refresh
         if (
           error.response?.status === 401 &&
           originalRequest &&
-          !originalRequest._retry
+          !originalRequest._retry &&
+          !isAuthEndpoint
         ) {
           if (this.isRefreshing) {
             // Queue the request while refreshing
