@@ -202,7 +202,7 @@ export const forgotPasswordService = async (email: string): Promise<void> => {
     return;
   }
 
-  const plainToken = crypto.randomBytes(32).toString('hex');
+  const plainToken = crypto.randomBytes(9).toString('base64url');
   const hashedToken = hashToken(plainToken);
 
   const validityDuration = 10 * 60 * 1000; // 10 minutes
