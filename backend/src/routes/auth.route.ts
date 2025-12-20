@@ -8,6 +8,13 @@ import {
   resetPassword,
 } from '../controllers/auth.controller';
 import { authLimiter } from '../middlewares/rateLimiter';
+import { validate } from '../middlewares/joi.middleware';
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from '../validators/auth.validator';
 
 const router = Router();
 router.use(authLimiter);
@@ -49,7 +56,7 @@ router.use(authLimiter);
  *             schema:
  *               $ref: "#/components/schemas/ApiError"
  */
-router.post('/register', registerUser);
+router.post('/register', validate(registerSchema), registerUser);
 
 /**
  * @swagger
@@ -88,7 +95,7 @@ router.post('/register', registerUser);
  *             schema:
  *               $ref: "#/components/schemas/ApiError"
  */
-router.post('/login', loginUser);
+router.post('/login', validate(loginSchema), loginUser);
 
 /**
  * @swagger
@@ -165,7 +172,7 @@ router.post('/refresh', refreshToken);
  *       "400":
  *         $ref: "#/components/responses/BadRequestError"
  */
-router.post('/forgot-password', forgotPassword);
+router.post('/forgot-password', validate(forgotPasswordSchema), forgotPassword);
 
 /**
  * @swagger
@@ -202,6 +209,6 @@ router.post('/forgot-password', forgotPassword);
  *             schema:
  *               $ref: "#/components/schemas/ApiError"
  */
-router.post('/reset-password', resetPassword);
+router.post('/reset-password', validate(resetPasswordSchema), resetPassword);
 
 export default router;
