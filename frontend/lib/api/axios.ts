@@ -1,4 +1,4 @@
-import { API_CONFIG, APP_CONFIG } from "@/config/constants";
+import { API_CONFIG } from "@/config/constants";
 import { tokenStorage } from "@/lib/token-storage";
 import { ApiErrorResponse, RateLimitInfo } from "@/types/api.types";
 import axios, {
@@ -113,7 +113,7 @@ class ApiClient {
           try {
             // Call refresh endpoint
             const response = await axios.post(
-              `${APP_CONFIG.APP_URL}/api/auth/refresh`,
+              `/api/auth/refresh`,
               {},
               { withCredentials: true }
             );

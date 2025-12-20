@@ -1,9 +1,22 @@
+import { API_CONFIG } from "@/config/constants";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
+
+    const refreshToken = cookieStore.get("refreshToken")?.value;
+
+    if (refreshToken) {
+      const response = await fetch(`${API_CONFIG.BACKEND_URL}/auth/logout`, {
+        method: "POST",
+        headers: {
+          Cookie: `refreshToken=${refreshToken}`,
+        },
+        credentials: "include",
+      });
+    }
 
     // Clear the refresh token cookie
     cookieStore.delete("refreshToken");

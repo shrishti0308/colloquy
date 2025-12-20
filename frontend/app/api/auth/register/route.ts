@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Call backend register endpoint
-    const response = await fetch(`${API_CONFIG.BASE_URL}/auth/register`, {
+    const response = await fetch(`${API_CONFIG.BACKEND_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
