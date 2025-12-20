@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+// Shared password validation
+const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+const passwordValidation = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(
+    PASSWORD_REGEX,
+    "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character"
+  );
+
 export const registerSchema = z.object({
   name: z
     .string()
@@ -12,13 +24,7 @@ export const registerSchema = z.object({
     .min(1, "Email is required")
     .toLowerCase()
     .trim(),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-      "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character"
-    ),
+  password: passwordValidation,
 });
 
 export const loginSchema = z.object({
@@ -40,25 +46,17 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
-  newPassword: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-      "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character"
-    ),
+  newPassword: passwordValidation,
 });
 
-export const changePasswordSchema = z.object({
-  oldPassword: z.string().min(1, "Current password is required"),
-  newPassword: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-      "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character"
-    ),
-});
+export const changePasswordSchema = z
+  .object({
+    oldPassword: z.string().min(1, "Current password is required"),
+    newPassword: passwordValidation,
+  })
+  .refine((data) => data.oldPassword !== data.newPassword, {
+    message: "New password must be different from the current password",
+  });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

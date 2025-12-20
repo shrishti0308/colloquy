@@ -22,11 +22,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the refresh token cookie from backend
-    const setCookieHeader = response.headers.get("set-cookie");
+    const setCookieHeaders = response.headers.getSetCookie();
     const nextResponse = NextResponse.json(data, { status: 200 });
-
-    if (setCookieHeader) {
-      nextResponse.headers.set("set-cookie", setCookieHeader);
+    if (setCookieHeaders.length > 0) {
+      setCookieHeaders.forEach((cookie) => {
+        nextResponse.headers.append("set-cookie", cookie);
+      });
     }
 
     return nextResponse;
