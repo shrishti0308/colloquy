@@ -39,3 +39,29 @@ export const sessionQuerySchema = Joi.object({
     .valid(...Object.values(SessionStatus))
     .optional(),
 });
+
+export const joinSessionSchema = Joi.object({
+  passcode: Joi.string().min(4).max(20).optional(),
+});
+
+export const inviteParticipantsSchema = Joi.object({
+  emails: Joi.array()
+    .items(Joi.string().email())
+    .min(1)
+    .max(10) // Max 10 invites per request
+    .required(),
+});
+
+export const submitCodeSchema = Joi.object({
+  problemId: Joi.string().required(), // NEW
+  language: Joi.string().required().trim(),
+  code: Joi.string().required().min(1),
+  notes: Joi.string().optional().max(500).trim(),
+});
+
+export const addFeedbackSchema = Joi.object({
+  score: Joi.number().min(0).max(100).optional(),
+  feedback: Joi.string().max(2000).trim().optional(),
+  strengths: Joi.array().items(Joi.string().trim()).optional(),
+  improvements: Joi.array().items(Joi.string().trim()).optional(),
+}).min(1);
