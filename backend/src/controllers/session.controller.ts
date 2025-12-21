@@ -256,3 +256,22 @@ export const addFeedback = asyncHandler(async (req: Request, res: Response) => {
     .status(200)
     .json(new ApiResponse(200, session, 'Feedback added successfully'));
 });
+
+/**
+ * @desc    Accept session invitation
+ * @route   POST /api/v1/sessions/:id/accept-invitation
+ * @access  Protected
+ */
+export const acceptInvitation = asyncHandler(
+  async (req: Request, res: Response) => {
+    const session = await sessionService.acceptInvitation(
+      req.params.id,
+      req.user!.id,
+      req.body.passcode
+    );
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, session, 'Invitation accepted successfully'));
+  }
+);

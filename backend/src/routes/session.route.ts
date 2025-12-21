@@ -4,6 +4,7 @@ import { authorizeRoles, protect } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/joi.middleware';
 import { UserRole } from '../models/user.model';
 import {
+  acceptInvitationSchema,
   addFeedbackSchema,
   createSessionSchema,
   inviteParticipantsSchema,
@@ -170,6 +171,43 @@ router.post(
   authorizeRoles(UserRole.INTERVIEWER, UserRole.ADMIN),
   validate(createSessionSchema),
   sessionController.createSession
+);
+
+/**
+ * @swagger
+ * /sessions/{id}/accept-invitation:
+ *   post:
+ *     summary: Accept invitation to session
+ *     description: Accept an invitation to join a session (does not add to session yet)
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/SessionId'
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               passcode:
+ *                 type: string
+ *                 example: "secret123"
+ *     responses:
+ *       "200":
+ *         description: Invitation accepted successfully
+ *       "400":
+ *         $ref: '#/components/responses/ValidationError'
+ *       "401":
+ *         description: Invalid passcode or unauthorized
+ *       "404":
+ *         $ref: '#/components/responses/NotFoundError'
+ */
+router.post(
+  '/:id/accept-invitation',
+  validate(acceptInvitationSchema),
+  sessionController.acceptInvitation
 );
 
 /**

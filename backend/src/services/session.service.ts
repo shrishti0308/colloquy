@@ -1090,3 +1090,53 @@ export const addFeedback = async (
 
   return session;
 };
+
+/**
+ * Accept invitation to a session
+ * @param sessionId - ID of the session
+ * @param userId - ID of the user accepting invitation
+ * @param passcode - Optional passcode for private sessions
+ * @returns The updated session object
+ */
+export const acceptInvitation = async (
+  sessionId: string,
+  userId: string,
+  passcode?: string
+): Promise<ISession> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  if (session.visibility === SessionVisibility.PRIVATE) {
+    if (!passcode) {
+      throw new ApiError(401, 'Passcode is required for private sessions');
+    }
+
+    const isValidPasscode = await session.verifyPasscode(passcode);
+    if (!isValidPasscode) {
+      throw new ApiError(401, 'Invalid passcode');
+    }
+  }
+
+  const participant = session.participants.find((p) => p.userId === userId);
+
+  if (!participant) {
+    throw new ApiError(400, 'You are not invited to this session');
+  }
+
+  if (participant.invitationStatus !== InvitationStatus.PENDING) {
+    throw new ApiError(400, 'Invitation has already been accepted or declined');
+  }
+
+  participant.invitationStatus = InvitationStatus.ACCEPTED;
+
+  await session.save();
+
+  logger.info(
+    `[Session] User ${userId} accepted invitation for session ${sessionId}`
+  );
+
+  return session;
+};

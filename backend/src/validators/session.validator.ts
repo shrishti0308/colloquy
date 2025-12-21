@@ -69,3 +69,7 @@ export const addFeedbackSchema = Joi.object({
   strengths: Joi.array().items(Joi.string().trim()).optional(),
   improvements: Joi.array().items(Joi.string().trim()).optional(),
 }).min(1);
+
+export const acceptInvitationSchema = Joi.object({
+  passcode: Joi.string().optional().min(4).max(20).trim(),
+});
