@@ -288,6 +288,23 @@ export const deleteSession = async (
     );
   }
 
+  try {
+    await streamService.deleteStreamCall(session.streamCallId);
+    logger.info(`[Session] Cleaned up Stream call: ${session.streamCallId}`);
+  } catch (error) {
+    logger.error(`[Session] Failed to delete Stream call: ${error}`);
+    // Don't throw - cleanup is best effort
+  }
+
+  try {
+    await streamService.deleteStreamChannel(session.streamChannelId);
+    logger.info(
+      `[Session] Cleaned up Stream channel: ${session.streamChannelId}`
+    );
+  } catch (error) {
+    logger.error(`[Session] Failed to delete Stream channel: ${error}`);
+    // Don't throw - cleanup is best effort
+  }
   // Soft delete
   await session.delete();
 
@@ -328,10 +345,26 @@ export const getAllSessions = async (filters: {
     .limit(50)
     .exec();
 
-  return sessions.map((session: any) => ({
-    ...session.toJSON(),
-    hasPasscode: session.visibility === SessionVisibility.PRIVATE,
-  }));
+  return sessions.map((session) => {
+    const sessionObj = session.toJSON();
+
+    const activeParticipantCount = session.participants.filter(
+      (p) => p.joinedAt && !p.leftAt
+    ).length;
+
+    return {
+      id: sessionObj.id,
+      title: sessionObj.title,
+      description: sessionObj.description,
+      visibility: sessionObj.visibility,
+      hostId: sessionObj.hostId,
+      status: sessionObj.status,
+      maxParticipants: sessionObj.maxParticipants,
+      participantCount: activeParticipantCount,
+      scheduledFor: sessionObj.scheduledFor,
+      hasPasscode: session.visibility === SessionVisibility.PRIVATE,
+    } as any;
+  });
 };
 
 /**
@@ -364,9 +397,9 @@ export const getMyHostedSessions = async (
 };
 
 /**
- * Get sessions where user is a participant.
+ * Get sessions where user is a participant (with privacy filters)
  * @param userId - ID of the user
- * @returns Array of session objects
+ * @returns Array of session objects with filtered participant data
  */
 export const getMyParticipatedSessions = async (
   userId: string
@@ -374,11 +407,41 @@ export const getMyParticipatedSessions = async (
   const sessions = await SessionModel.find({
     'participants.userId': userId,
   })
-    .populate('hostId', 'id name email')
+    .populate({
+      model: 'User',
+      path: 'hostId',
+      select: 'id name email',
+      foreignField: 'id',
+    })
+    .populate({
+      model: 'User',
+      path: 'participants.userId',
+      select: 'id name email',
+      foreignField: 'id',
+    })
     .sort({ createdAt: -1 })
     .exec();
 
-  return sessions;
+  // Filter sensitive participant data
+  return sessions.map((session) => {
+    const sessionObj = session.toJSON();
+
+    sessionObj.participants = sessionObj.participants.map((p: any) => {
+      if (p.userId.id === userId || p.userId === userId) {
+        return p;
+      } else {
+        return {
+          userId: p.userId,
+          joinedAt: p.joinedAt,
+          leftAt: p.leftAt,
+          invitedAt: p.invitedAt,
+          invitationStatus: p.invitationStatus,
+        };
+      }
+    });
+
+    return sessionObj as any;
+  });
 };
 
 /**
@@ -744,6 +807,24 @@ export const endSession = async (
   await session.save();
 
   logger.info(`[Session] Session ${sessionId} ended by ${hostId}`);
+
+  try {
+    await streamService.deleteStreamCall(session.streamCallId);
+    logger.info(`[Session] Cleaned up Stream call: ${session.streamCallId}`);
+  } catch (error) {
+    logger.error(`[Session] Failed to delete Stream call: ${error}`);
+    // Don't throw - cleanup is best effort
+  }
+
+  try {
+    await streamService.deleteStreamChannel(session.streamChannelId);
+    logger.info(
+      `[Session] Cleaned up Stream channel: ${session.streamChannelId}`
+    );
+  } catch (error) {
+    logger.error(`[Session] Failed to delete Stream channel: ${error}`);
+    // Don't throw - cleanup is best effort
+  }
 
   // Emit event
   try {
