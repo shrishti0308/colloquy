@@ -24,7 +24,6 @@ const syncUserToStream = inngest.createFunction(
       await upsertStreamUser({
         id: userId,
         name: name,
-        role: role,
       });
 
       logger.info(`[Inngest] User ${userId} synced to Stream successfully`);
@@ -74,7 +73,6 @@ const restoreUserToStream = inngest.createFunction(
       await upsertStreamUser({
         id: userId,
         name: name,
-        role: role,
       });
 
       logger.info(`[Inngest] User ${userId} restored to Stream successfully`);
@@ -100,7 +98,6 @@ const updateUserInStream = inngest.createFunction(
       await upsertStreamUser({
         id: userId,
         name: name,
-        role: role,
       });
 
       logger.info(`[Inngest] User ${userId} updated in Stream successfully`);
