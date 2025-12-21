@@ -7,19 +7,24 @@ import {
   RegisterBody,
   ResetPasswordBody,
 } from '../docs/auth.schema';
-import { responses } from '../docs/responses';
-import {
-  AdminUpdateUserBody,
-  ChangePasswordBody,
-  UpdateProfileBody,
-  UserSchema,
-} from '../docs/user.schema';
 import { parameters } from '../docs/parameters';
 import {
   CreateProblemBody,
   ProblemSchema,
   UpdateProblemBody,
 } from '../docs/problem.schema';
+import { responses } from '../docs/responses';
+import {
+  CreateSessionBody,
+  SessionSchema,
+  UpdateSessionBody,
+} from '../docs/session.schema';
+import {
+  AdminUpdateUserBody,
+  ChangePasswordBody,
+  UpdateProfileBody,
+  UserSchema,
+} from '../docs/user.schema';
 
 const options: swaggerJSDoc.Options = {
   definition: {
@@ -82,6 +87,9 @@ const options: swaggerJSDoc.Options = {
         Problem: ProblemSchema,
         CreateProblemBody: CreateProblemBody,
         UpdateProblemBody: UpdateProblemBody,
+        Session: SessionSchema,
+        CreateSessionBody: CreateSessionBody,
+        UpdateSessionBody: UpdateSessionBody,
       },
       parameters: {
         ...parameters,
