@@ -143,3 +143,116 @@ export const deleteSession = asyncHandler(
       .json(new ApiResponse(200, null, 'Session deleted successfully'));
   }
 );
+
+/**
+ * @desc    Join a session
+ * @route   POST /api/v1/sessions/:id/join
+ * @access  Protected
+ */
+export const joinSession = asyncHandler(async (req: Request, res: Response) => {
+  const session = await sessionService.joinSession(
+    req.params.id,
+    req.user!.id,
+    req.body.passcode
+  );
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, session, 'Joined session successfully'));
+});
+
+/**
+ * @desc    Leave a session
+ * @route   POST /api/v1/sessions/:id/leave
+ * @access  Protected
+ */
+export const leaveSession = asyncHandler(
+  async (req: Request, res: Response) => {
+    await sessionService.leaveSession(req.params.id, req.user!.id);
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, null, 'Left session successfully'));
+  }
+);
+
+/**
+ * @desc    Invite participants to session
+ * @route   POST /api/v1/sessions/:id/invite
+ * @access  Host only
+ */
+export const inviteParticipants = asyncHandler(
+  async (req: Request, res: Response) => {
+    const results = await sessionService.inviteParticipants(
+      req.params.id,
+      req.user!.id,
+      req.body.emails
+    );
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, results, 'Invitations processed'));
+  }
+);
+
+/**
+ * @desc    Start a session
+ * @route   PUT /api/v1/sessions/:id/start
+ * @access  Host only
+ */
+export const startSession = asyncHandler(
+  async (req: Request, res: Response) => {
+    const session = await sessionService.startSession(
+      req.params.id,
+      req.user!.id
+    );
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, session, 'Session started successfully'));
+  }
+);
+
+/**
+ * @desc    End a session
+ * @route   PUT /api/v1/sessions/:id/end
+ * @access  Host only
+ */
+export const endSession = asyncHandler(async (req: Request, res: Response) => {
+  const session = await sessionService.endSession(req.params.id, req.user!.id);
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, session, 'Session ended successfully'));
+});
+
+/**
+ * @desc    Submit code for current problem
+ * @route   POST /api/v1/sessions/:id/submit-code
+ * @access  Participants only
+ */
+export const submitCode = asyncHandler(async (req: Request, res: Response) => {
+  await sessionService.submitCode(req.params.id, req.user!.id, req.body);
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, null, 'Code submitted successfully'));
+});
+
+/**
+ * @desc    Add feedback for participant
+ * @route   PUT /api/v1/sessions/:id/feedback/:userId
+ * @access  Host only
+ */
+export const addFeedback = asyncHandler(async (req: Request, res: Response) => {
+  const session = await sessionService.addFeedback(
+    req.params.id,
+    req.user!.id,
+    req.params.userId,
+    req.body
+  );
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, session, 'Feedback added successfully'));
+});

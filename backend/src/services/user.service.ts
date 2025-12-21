@@ -205,3 +205,18 @@ export const changeMyPassword = async (
     // Don't throw - password change should succeed even if event fails
   }
 };
+
+/**
+ * Get users by email addresses
+ * @param emails - Array of email addresses
+ * @returns Array of users
+ */
+export const getUsersByEmails = async (
+  emails: string[]
+): Promise<IUser[]> => {
+  const users = await UserModel.find({
+    email: { $in: emails },
+  }).select('id name email');
+
+  return users;
+};

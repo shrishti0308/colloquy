@@ -1,5 +1,6 @@
 import { inngest } from '../config/inngest';
 import SessionModel, {
+  InvitationStatus,
   ISession,
   SessionStatus,
   SessionVisibility,
@@ -8,6 +9,7 @@ import ApiError from '../utils/apiError';
 import logger from '../utils/logger';
 import * as problemService from './problem.service';
 import * as streamService from './stream.service';
+import * as userService from './user.service';
 
 interface CreateSessionData {
   title: string;
@@ -96,7 +98,6 @@ export const createSession = async (
     hostId,
     maxParticipants: sessionData.maxParticipants,
     problems,
-    currentProblemIndex: 0,
     streamCallId,
     streamChannelId,
     recordingEnabled: sessionData.recordingEnabled,
@@ -305,7 +306,6 @@ export const getAllSessions = async (filters: {
   status?: SessionStatus;
 }): Promise<ISession[]> => {
   const query: any = {
-    visibility: SessionVisibility.PUBLIC,
     status: { $in: [SessionStatus.WAITING, SessionStatus.SCHEDULED] },
   };
 
@@ -328,7 +328,10 @@ export const getAllSessions = async (filters: {
     .limit(50)
     .exec();
 
-  return sessions;
+  return sessions.map((session: any) => ({
+    ...session.toJSON(),
+    hasPasscode: session.visibility === SessionVisibility.PRIVATE,
+  }));
 };
 
 /**
@@ -376,4 +379,539 @@ export const getMyParticipatedSessions = async (
     .exec();
 
   return sessions;
+};
+
+/**
+ * Join a session
+ * @param sessionId - ID of the session to join
+ * @param userId - ID of the user joining
+ * @param passcode - Optional passcode for private sessions
+ * @returns The updated session object with the new participant
+ */
+export const joinSession = async (
+  sessionId: string,
+  userId: string,
+  passcode?: string
+): Promise<ISession> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  // Check if session is joinable
+  if (
+    session.status !== SessionStatus.WAITING &&
+    session.status !== SessionStatus.SCHEDULED &&
+    session.status !== SessionStatus.ACTIVE // Allow late joiners
+  ) {
+    throw new ApiError(400, 'This session cannot be joined at this time');
+  }
+
+  // Verify passcode for private sessions
+  if (session.visibility === SessionVisibility.PRIVATE) {
+    if (!passcode) {
+      throw new ApiError(401, 'Passcode is required for private sessions');
+    }
+
+    const isValidPasscode = await session.verifyPasscode(passcode);
+    if (!isValidPasscode) {
+      throw new ApiError(401, 'Invalid passcode');
+    }
+  }
+
+  if (session.hostId === userId) {
+    throw new ApiError(400, 'Host cannot join as a participant');
+  }
+
+  const existingParticipant = session.participants.find(
+    (p) => p.userId === userId
+  );
+
+  const activeParticipants = session.participants.filter(
+    (p) => p.joinedAt !== null && !p.leftAt
+  ).length;
+
+  if (existingParticipant) {
+    // User is rejoining or accepting invitation
+    if (existingParticipant.invitationStatus === InvitationStatus.PENDING) {
+      // Accept invitation - check if session is full
+      if (activeParticipants >= session.maxParticipants) {
+        throw new ApiError(400, 'Session is full');
+      }
+
+      existingParticipant.invitationStatus = InvitationStatus.ACCEPTED;
+      existingParticipant.joinedAt = new Date();
+    } else if (existingParticipant.leftAt) {
+      // Rejoining after leaving - check if session is full
+      if (activeParticipants >= session.maxParticipants) {
+        throw new ApiError(400, 'Session is full');
+      }
+
+      existingParticipant.leftAt = undefined;
+      // Keep joinedAt as original join time
+    } else {
+      // Already in session
+      throw new ApiError(400, 'You have already joined this session');
+    }
+  } else {
+    // New participant (self-join) - check if session is full
+    if (activeParticipants >= session.maxParticipants) {
+      throw new ApiError(400, 'Session is full');
+    }
+
+    session.participants.push({
+      userId,
+      joinedAt: new Date(),
+      submittedCode: [],
+    });
+  }
+
+  // Add to Stream channel
+  await streamService.addChannelMember(session.streamChannelId, userId);
+
+  await session.save();
+
+  logger.info(`[Session] User ${userId} joined session ${sessionId}`);
+
+  // Emit event
+  try {
+    await inngest.send({
+      name: 'colloquy/session.participant-joined',
+      data: {
+        sessionId: session.id,
+        userId,
+        hostId: session.hostId,
+      },
+    });
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send participant-joined event: ${error}`);
+  }
+
+  return session;
+};
+
+/**
+ * Leave a session
+ * @param sessionId - ID of the session to leave
+ * @param userId - ID of the user leaving
+ * @returns Promise that resolves when user has left
+ */
+export const leaveSession = async (
+  sessionId: string,
+  userId: string
+): Promise<void> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  if (session.hostId === userId) {
+    throw new ApiError(
+      400,
+      'Host cannot leave. Please end the session instead.'
+    );
+  }
+
+  const participant = session.participants.find((p) => p.userId === userId);
+
+  if (!participant) {
+    throw new ApiError(400, 'You are not a participant in this session');
+  }
+
+  if (participant.leftAt) {
+    throw new ApiError(400, 'You have already left this session');
+  }
+
+  // Set leftAt timestamp
+  participant.leftAt = new Date();
+
+  // Remove from Stream channel
+  await streamService.removeChannelMember(session.streamChannelId, userId);
+
+  await session.save();
+
+  logger.info(`[Session] User ${userId} left session ${sessionId}`);
+};
+
+/**
+ * Invite participants by email
+ * @param sessionId - ID of the session
+ * @param hostId - ID of the host user
+ * @param emails - Array of email addresses to invite
+ * @returns Array of results indicating success/failure for each email
+ */
+export const inviteParticipants = async (
+  sessionId: string,
+  hostId: string,
+  emails: string[]
+): Promise<{ email: string; status: string; userId?: string }[]> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  if (session.hostId !== hostId) {
+    throw new ApiError(403, 'Only the host can invite participants');
+  }
+
+  if (
+    session.status === SessionStatus.COMPLETED ||
+    session.status === SessionStatus.CANCELLED
+  ) {
+    throw new ApiError(400, 'Cannot invite to completed or cancelled sessions');
+  }
+
+  const users = await userService.getUsersByEmails(emails);
+
+  const results = emails.map((email) => {
+    const user = users.find((u) => u.email === email);
+
+    if (!user) {
+      return { email, status: 'user_not_found' };
+    }
+
+    if (user.id === hostId) {
+      return { email, status: 'cannot_invite_host', userId: user.id };
+    }
+
+    const existing = session.participants.find((p) => p.userId === user.id);
+
+    if (existing) {
+      if (existing.invitationStatus === InvitationStatus.PENDING) {
+        return { email, status: 'already_invited', userId: user.id };
+      }
+      if (existing.joinedAt && !existing.leftAt) {
+        return { email, status: 'already_joined', userId: user.id };
+      }
+      if (existing.leftAt) {
+        return { email, status: 'previously_left', userId: user.id };
+      }
+    }
+
+    // Add as invited participant
+    session.participants.push({
+      userId: user.id,
+      joinedAt: null,
+      invitedAt: new Date(),
+      invitationStatus: InvitationStatus.PENDING,
+      submittedCode: [],
+    });
+
+    // Emit event for email notification (will implement later)
+    try {
+      inngest.send({
+        name: 'colloquy/session.participant-invited',
+        data: {
+          sessionId: session.id,
+          userId: user.id,
+          email: user.email,
+          hostId,
+          sessionTitle: session.title,
+          passcode:
+            session.visibility === SessionVisibility.PRIVATE
+              ? 'required'
+              : undefined,
+        },
+      });
+    } catch (error) {
+      logger.error(`[Inngest] Failed to send invitation event: ${error}`);
+    }
+
+    return { email, status: 'invited', userId: user.id };
+  });
+
+  await session.save();
+
+  logger.info(
+    `[Session] Invitations sent for session ${sessionId}: ${results.filter((r) => r.status === 'invited').length} successful`
+  );
+
+  return results;
+};
+
+/**
+ * Start a session
+ * @param sessionId - ID of the session to start
+ * @param hostId - ID of the host user
+ * @returns The updated session object with ACTIVE status
+ */
+export const startSession = async (
+  sessionId: string,
+  hostId: string
+): Promise<ISession> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  if (session.hostId !== hostId) {
+    throw new ApiError(403, 'Only the host can start the session');
+  }
+
+  if (session.status === SessionStatus.ACTIVE) {
+    throw new ApiError(400, 'Session is already active');
+  }
+
+  if (
+    session.status !== SessionStatus.WAITING &&
+    session.status !== SessionStatus.SCHEDULED
+  ) {
+    throw new ApiError(400, 'Cannot start a completed or cancelled session');
+  }
+
+  session.status = SessionStatus.ACTIVE;
+  session.startedAt = new Date();
+
+  await session.save();
+
+  logger.info(`[Session] Session ${sessionId} started by ${hostId}`);
+
+  // Emit event
+  try {
+    await inngest.send({
+      name: 'colloquy/session.started',
+      data: {
+        sessionId: session.id,
+        hostId,
+        participantIds: session.participants
+          .filter((p) => p.joinedAt && !p.leftAt)
+          .map((p) => p.userId),
+      },
+    });
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send session-started event: ${error}`);
+  }
+
+  return session;
+};
+
+/**
+ * End a session
+ * @param sessionId - ID of the session to end
+ * @param hostId - ID of the host user
+ * @returns The updated session object with COMPLETED status, chat logs, and recording URL
+ */
+export const endSession = async (
+  sessionId: string,
+  hostId: string
+): Promise<ISession> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  if (session.hostId !== hostId) {
+    throw new ApiError(403, 'Only the host can end the session');
+  }
+
+  if (session.status !== SessionStatus.ACTIVE) {
+    throw new ApiError(400, 'Only active sessions can be ended');
+  }
+
+  // Fetch chat logs from Stream
+  try {
+    const chatLogs = await streamService.getChannelMessages(
+      session.streamChannelId
+    );
+    session.chatLogs = chatLogs;
+  } catch (error) {
+    logger.error(`[Session] Failed to fetch chat logs: ${error}`);
+  }
+
+  // Fetch recording URL if recording was enabled
+  if (session.recordingEnabled) {
+    try {
+      const recordingUrl = await streamService.getCallRecording(
+        session.streamCallId
+      );
+      if (recordingUrl) {
+        session.recordingUrl = recordingUrl;
+      }
+    } catch (error) {
+      logger.error(`[Session] Failed to fetch recording: ${error}`);
+    }
+  }
+
+  // Update status
+  session.status = SessionStatus.COMPLETED;
+  session.endedAt = new Date();
+
+  await session.save();
+
+  logger.info(`[Session] Session ${sessionId} ended by ${hostId}`);
+
+  // Emit event
+  try {
+    await inngest.send({
+      name: 'colloquy/session.ended',
+      data: {
+        sessionId: session.id,
+        hostId,
+        participantIds: session.participants.map((p) => p.userId),
+        recordingUrl: session.recordingUrl,
+      },
+    });
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send session-ended event: ${error}`);
+  }
+
+  return session;
+};
+
+/**
+ * Submit code for a specific problem
+ * @param sessionId - ID of the session
+ * @param userId - ID of the user submitting code
+ * @param codeData - Code submission data including problemId, language, code, and optional notes
+ * @returns Promise that resolves when code is submitted
+ */
+export const submitCode = async (
+  sessionId: string,
+  userId: string,
+  codeData: {
+    problemId: string;
+    language: string;
+    code: string;
+    notes?: string;
+  }
+): Promise<void> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  if (session.status !== SessionStatus.ACTIVE) {
+    throw new ApiError(400, 'Can only submit code in active sessions');
+  }
+
+  if (!session.problems.includes(codeData.problemId)) {
+    throw new ApiError(400, 'Problem is not part of this session');
+  }
+
+  const participant = session.participants.find((p) => p.userId === userId);
+
+  if (!participant) {
+    throw new ApiError(400, 'You are not a participant in this session');
+  }
+
+  if (participant.leftAt) {
+    throw new ApiError(400, 'You have left this session');
+  }
+
+  const existingIndex = participant.submittedCode.findIndex(
+    (sub) => sub.problemId === codeData.problemId
+  );
+
+  if (existingIndex !== -1) {
+    // Overwrite existing submission
+    participant.submittedCode[existingIndex] = {
+      problemId: codeData.problemId,
+      language: codeData.language,
+      code: codeData.code,
+      notes: codeData.notes,
+      submittedAt: new Date(),
+    };
+    logger.info(
+      `[Session] Code updated by ${userId} for problem ${codeData.problemId} in session ${sessionId}`
+    );
+  } else {
+    // Add new submission
+    participant.submittedCode.push({
+      problemId: codeData.problemId,
+      language: codeData.language,
+      code: codeData.code,
+      notes: codeData.notes,
+      submittedAt: new Date(),
+    });
+    logger.info(
+      `[Session] Code submitted by ${userId} for problem ${codeData.problemId} in session ${sessionId}`
+    );
+  }
+
+  await session.save();
+};
+
+/**
+ * Add feedback for a participant
+ * @param sessionId - ID of the session
+ * @param hostId - ID of the host user
+ * @param participantId - ID of the participant receiving feedback
+ * @param feedbackData - Feedback data including score, feedback text, strengths, and improvements
+ * @returns The updated session object with participant feedback
+ */
+export const addFeedback = async (
+  sessionId: string,
+  hostId: string,
+  participantId: string,
+  feedbackData: {
+    score?: number;
+    feedback?: string;
+    strengths?: string[];
+    improvements?: string[];
+  }
+): Promise<ISession> => {
+  const session = await SessionModel.findOne({ id: sessionId });
+
+  if (!session) {
+    throw new ApiError(404, 'Session not found');
+  }
+
+  if (session.hostId !== hostId) {
+    throw new ApiError(403, 'Only the host can add feedback');
+  }
+
+  if (session.status !== SessionStatus.COMPLETED) {
+    throw new ApiError(400, 'Can only add feedback to completed sessions');
+  }
+
+  const participant = session.participants.find(
+    (p) => p.userId === participantId
+  );
+
+  if (!participant) {
+    throw new ApiError(404, 'Participant not found in this session');
+  }
+
+  // Update feedback
+  if (feedbackData.score !== undefined) {
+    participant.score = feedbackData.score;
+  }
+  if (feedbackData.feedback !== undefined) {
+    participant.feedback = feedbackData.feedback;
+  }
+  if (feedbackData.strengths !== undefined) {
+    participant.strengths = feedbackData.strengths;
+  }
+  if (feedbackData.improvements !== undefined) {
+    participant.improvements = feedbackData.improvements;
+  }
+
+  await session.save();
+
+  logger.info(
+    `[Session] Feedback added for ${participantId} in session ${sessionId}`
+  );
+
+  // Emit event
+  try {
+    await inngest.send({
+      name: 'colloquy/session.feedback-added',
+      data: {
+        sessionId: session.id,
+        participantId,
+        hostId,
+        score: participant.score,
+      },
+    });
+  } catch (error) {
+    logger.error(`[Inngest] Failed to send feedback-added event: ${error}`);
+  }
+
+  return session;
 };
