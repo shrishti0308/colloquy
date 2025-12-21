@@ -5,6 +5,8 @@ import {
   sendLoginAlertEmail as sendLoginAlertEmailHelper,
   sendPasswordResetConfirmationEmail as sendPasswordResetConfirmationEmailHelper,
   sendPasswordResetEmail as sendPasswordResetEmailHelper,
+  sendProblemCreatedEmail as sendProblemCreatedEmailHelper,
+  sendProblemDeletedEmail as sendProblemDeletedEmailHelper,
   sendWelcomeEmail as sendWelcomeEmailHelper,
 } from './mail.service';
 import { deleteStreamUser, upsertStreamUser } from './stream.service';
@@ -227,12 +229,27 @@ const handleProblemCreated = inngest.createFunction(
   { event: 'colloquy/problem.created' },
   async ({ event }) => {
     try {
-      const { problemId, title, createdBy, visibility } = event.data;
+      const { problemId, title, createdBy, visibility, userEmail, userName } =
+        event.data;
 
-      logger.info(`[Inngest] Handling problem creation: ${problemId}`);
+      if (!userEmail || !userName) {
+        logger.warn(
+          `[Inngest] Skipping problem created email - missing user details for problem ${problemId}`
+        );
+        return;
+      }
 
-      // TODO: Implement problem creation handling logic
+      logger.info(
+        `[Inngest] Sending problem created notification to ${userEmail}`
+      );
 
+      await sendProblemCreatedEmailHelper(
+        userEmail,
+        userName,
+        title,
+        problemId,
+        visibility
+      );
       logger.info(
         `[Inngest] Problem ${problemId} creation handled successfully`
       );
@@ -254,11 +271,25 @@ const handleProblemDeleted = inngest.createFunction(
   { event: 'colloquy/problem.deleted' },
   async ({ event }) => {
     try {
-      const { problemId, title, deletedBy } = event.data;
+      const { problemId, title, deletedBy, userEmail, userName } = event.data;
 
-      logger.info(`[Inngest] Handling problem deletion: ${problemId}`);
+      if (!userEmail || !userName) {
+        logger.warn(
+          `[Inngest] Skipping problem deleted email - missing user details for problem ${problemId}`
+        );
+        return;
+      }
 
-      // TODO: Implement problem deletion handling logic
+      logger.info(
+        `[Inngest] Sending problem deleted notification to ${userEmail}`
+      );
+
+      await sendProblemDeletedEmailHelper(
+        userEmail,
+        userName,
+        title,
+        problemId
+      );
 
       logger.info(
         `[Inngest] Problem ${problemId} deletion handled successfully`

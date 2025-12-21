@@ -62,7 +62,7 @@ Use this space for:
 
 int main() {
     // Write your code here
-    
+
     return 0;
 }`,
       },
@@ -73,7 +73,7 @@ using namespace std;
 
 int main() {
     // Write your code here
-    
+
     return 0;
 }`,
       },
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         starterCode: `public class Solution {
     public static void main(String[] args) {
         // Write your code here
-        
+
     }
 }`,
       },
@@ -121,14 +121,14 @@ import "fmt"
 
 func main() {
     // Write your code here
-    
+
 }`,
       },
       {
         language: ProgrammingLanguage.RUST,
         starterCode: `fn main() {
     // Write your code here
-    
+
 }`,
       },
     ],
@@ -146,12 +146,16 @@ func main() {
  * Create a new problem.
  * @param problemData - Problem details including title, description, difficulty, templates, and test cases
  * @param userId - ID of the user creating the problem
+ * @param userEmail - Email of the user creating the problem
+ * @param userName - Name of the user creating the problem
  * @param userRole - Role of the user creating the problem
  * @returns The created problem object
  */
 export const createProblem = async (
   problemData: CreateProblemData,
   userId: string,
+  userEmail: string,
+  userName: string,
   userRole: UserRole
 ): Promise<IProblem> => {
   // Set visibility based on user role
@@ -176,6 +180,8 @@ export const createProblem = async (
         title: problem.title,
         createdBy: userId,
         visibility,
+        userEmail,
+        userName,
       },
     });
     logger.info(`[Inngest] Event sent for problem creation: ${problem.id}`);
@@ -306,12 +312,16 @@ export const updateProblem = async (
  * Delete problem by ID (soft delete).
  * @param problemId - ID of the problem to delete
  * @param userId - ID of the user deleting the problem
+ * @param userEmail - Email of the user deleting the problem
+ * @param userName - Name of the user deleting the problem
  * @param userRole - Role of the user deleting the problem
  * @returns Void
  */
 export const deleteProblem = async (
   problemId: string,
   userId: string,
+  userEmail: string,
+  userName: string,
   userRole: UserRole
 ): Promise<void> => {
   const problem = await ProblemModel.findOne({ id: problemId });
@@ -338,6 +348,8 @@ export const deleteProblem = async (
         problemId: problem.id,
         title: problem.title,
         deletedBy: userId,
+        userEmail,
+        userName,
       },
     });
     logger.info(`[Inngest] Event sent for problem deletion: ${problem.id}`);

@@ -5,6 +5,8 @@ import {
   getLoginAlertEmailHtml,
   getPasswordChangedEmailHtml,
   getPasswordResetEmailHtml,
+  getProblemCreatedEmailHtml,
+  getProblemDeletedEmailHtml,
   getWelcomeEmailHtml,
 } from '../utils/mailTemplates';
 
@@ -118,6 +120,59 @@ export const sendPasswordResetEmail = (email: string, token: string) => {
 export const sendPasswordResetConfirmationEmail = (email: string) => {
   const subject = 'Your Password Has Been Reset';
   const html = getPasswordChangedEmailHtml();
+
+  return sendEmail({
+    to: email,
+    subject: subject,
+    html: html,
+  });
+};
+
+/**
+ * Send a problem created notification email
+ * @param email - Recipient email address
+ * @param userName - User's name
+ * @param problemTitle - Problem title
+ * @param problemId - Problem ID
+ * @param visibility - Problem visibility
+ */
+export const sendProblemCreatedEmail = (
+  email: string,
+  userName: string,
+  problemTitle: string,
+  problemId: string,
+  visibility: string
+) => {
+  const subject = 'New problem created';
+  const html = getProblemCreatedEmailHtml(
+    userName,
+    problemTitle,
+    problemId,
+    visibility
+  );
+
+  return sendEmail({
+    to: email,
+    subject: subject,
+    html: html,
+  });
+};
+
+/**
+ * Send a problem deleted notification email
+ * @param email - Recipient email address
+ * @param userName - User's name
+ * @param problemTitle - Problem title
+ * @param problemId - Problem ID
+ */
+export const sendProblemDeletedEmail = (
+  email: string,
+  userName: string,
+  problemTitle: string,
+  problemId: string
+) => {
+  const subject = 'Problem deleted';
+  const html = getProblemDeletedEmailHtml(userName, problemTitle, problemId);
 
   return sendEmail({
     to: email,

@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
+import { ProblemDifficulty } from '../models/problem.model';
 import * as problemService from '../services/problem.service';
 import ApiResponse from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
-import { ProblemDifficulty } from '../models/problem.model';
 
 /**
  * @desc    Create a new problem
@@ -14,6 +14,8 @@ export const createProblem = asyncHandler(
     const problem = await problemService.createProblem(
       req.body,
       req.user!.id,
+      req.user!.email,
+      req.user!.name,
       req.user!.role
     );
 
@@ -113,6 +115,8 @@ export const deleteProblem = asyncHandler(
     await problemService.deleteProblem(
       req.params.id,
       req.user!.id,
+      req.user!.email,
+      req.user!.name,
       req.user!.role
     );
 

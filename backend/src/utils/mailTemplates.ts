@@ -223,3 +223,118 @@ export const getPasswordChangedEmailHtml = (): string => {
 
   return htmlTemplate(subject, content);
 };
+
+/**
+ * Generates the HTML for a problem created notification email (for admins).
+ * @param userName - The user's name.
+ * @param problemTitle - The problem title.
+ * @param problemId - The problem ID.
+ * @param visibility - Problem visibility.
+ */
+export const getProblemCreatedEmailHtml = (
+  userName: string,
+  problemTitle: string,
+  problemId: string,
+  visibility: string
+): string => {
+  const subject = 'New problem created';
+  const viewUrl = `${Config.FRONTEND_URL}/problems/${problemId}`;
+
+  const visibilityBadge =
+    visibility === 'public'
+      ? `<span style="
+           display: inline-block;
+           padding: 4px 8px;
+           background-color: #D4EDDA;
+           color: #155724;
+           border-radius: 4px;
+           font-size: 12px;
+           font-weight: 500;
+         ">
+           PUBLIC
+         </span>`
+      : `<span style="
+           display: inline-block;
+           padding: 4px 8px;
+           background-color: #FFF3CD;
+           color: #856404;
+           border-radius: 4px;
+           font-size: 12px;
+           font-weight: 500;
+         ">
+           PRIVATE
+         </span>`;
+
+  const content = `
+    <p>Hello ${userName},</p>
+
+    <p>
+      Your problem has been successfully created on Colloquy.
+    </p>
+
+    <p style="margin: 16px 0;">
+      <strong>Problem:</strong> ${problemTitle}
+    </p>
+
+    <p style="margin: 16px 0;">
+      <strong>Visibility:</strong> ${visibilityBadge}
+    </p>
+
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${viewUrl}" style="
+        display: inline-block;
+        padding: 12px 24px;
+        background-color: #2F80ED;
+        color: #FFFFFF;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: 500;
+      ">
+        View Problem
+      </a>
+    </p>
+
+    <p style="
+      font-size: 12px;
+      color: #6B7280;
+      margin-top: 24px;
+    ">
+      Or copy this link: ${viewUrl}
+    </p>
+  `;
+
+  return htmlTemplate(subject, content);
+};
+
+/**
+ * Generates the HTML for a problem deleted notification email.
+ * @param userName - The user's name.
+ * @param problemTitle - The problem title.
+ * @param problemId - The problem ID.
+ */
+export const getProblemDeletedEmailHtml = (
+  userName: string,
+  problemTitle: string,
+  problemId: string
+): string => {
+  const subject = 'Problem deleted';
+
+  const content = `
+    <p>Hello ${userName},</p>
+
+    <p>
+      Your problem <strong>"${problemTitle}" {${problemId}}</strong> has been successfully deleted from Colloquy.
+    </p>
+
+    <p style="
+      margin: 16px 0;
+      padding: 12px;
+      background-color: #F5F5F5;
+      border-left: 4px solid #6B7280;
+    ">
+      This action cannot be undone. The problem is no longer accessible.
+    </p>
+  `;
+
+  return htmlTemplate(subject, content);
+};
