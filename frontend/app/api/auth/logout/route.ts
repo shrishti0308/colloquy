@@ -10,11 +10,11 @@ export async function POST(request: NextRequest) {
 
     const refreshToken = cookieStore.get("refreshToken")?.value;
 
-    const headers = buildBackendHeaders(request, {
-      Cookie: `refreshToken=${refreshToken}`,
-    });
-
     if (refreshToken) {
+      const headers = buildBackendHeaders(request, {
+        Cookie: `refreshToken=${refreshToken}`,
+      });
+
       const response = await fetch(`${API_CONFIG.BACKEND_URL}/auth/logout`, {
         method: "POST",
         headers,

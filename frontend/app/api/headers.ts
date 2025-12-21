@@ -1,3 +1,5 @@
+import { NextRequest } from "next/server";
+
 export function buildBackendHeaders(
   request: NextRequest,
   initHeaders: Record<string, string> = {}
@@ -11,7 +13,9 @@ export function buildBackendHeaders(
     headers.set("x-real-ip", clientIp);
   }
 
-  const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol;
+  const proto =
+    request.headers.get("x-forwarded-proto") ??
+    request.nextUrl.protocol.replace(":", "");
   if (proto) {
     headers.set("x-forwarded-proto", proto);
   }
