@@ -1,10 +1,19 @@
 import { inngest } from '../config/inngest';
+import SessionModel, { SessionStatus } from '../models/session.model';
 import UserModel from '../models/user.model';
 import logger from '../utils/logger';
 import {
+  sendDailySessionReminderEmail as sendDailySessionReminderEmailHelper,
+  sendFeedbackAddedEmail as sendFeedbackAddedEmailHelper,
   sendLoginAlertEmail as sendLoginAlertEmailHelper,
   sendPasswordResetConfirmationEmail as sendPasswordResetConfirmationEmailHelper,
   sendPasswordResetEmail as sendPasswordResetEmailHelper,
+  sendProblemCreatedEmail as sendProblemCreatedEmailHelper,
+  sendProblemDeletedEmail as sendProblemDeletedEmailHelper,
+  sendSessionEndedEmail as sendSessionEndedEmailHelper,
+  sendSessionInvitationEmail as sendSessionInvitationEmailHelper,
+  sendSessionStartedEmail as sendSessionStartedEmailHelper,
+  sendSessionUpdateEmail as sendSessionUpdateEmailHelper,
   sendWelcomeEmail as sendWelcomeEmailHelper,
 } from './mail.service';
 import { deleteStreamUser, upsertStreamUser } from './stream.service';
@@ -24,7 +33,6 @@ const syncUserToStream = inngest.createFunction(
       await upsertStreamUser({
         id: userId,
         name: name,
-        role: role,
       });
 
       logger.info(`[Inngest] User ${userId} synced to Stream successfully`);
@@ -74,7 +82,6 @@ const restoreUserToStream = inngest.createFunction(
       await upsertStreamUser({
         id: userId,
         name: name,
-        role: role,
       });
 
       logger.info(`[Inngest] User ${userId} restored to Stream successfully`);
@@ -100,7 +107,6 @@ const updateUserInStream = inngest.createFunction(
       await upsertStreamUser({
         id: userId,
         name: name,
-        role: role,
       });
 
       logger.info(`[Inngest] User ${userId} updated in Stream successfully`);
@@ -230,12 +236,27 @@ const handleProblemCreated = inngest.createFunction(
   { event: 'colloquy/problem.created' },
   async ({ event }) => {
     try {
-      const { problemId, title, createdBy, visibility } = event.data;
+      const { problemId, title, createdBy, visibility, userEmail, userName } =
+        event.data;
 
-      logger.info(`[Inngest] Handling problem creation: ${problemId}`);
+      if (!userEmail || !userName) {
+        logger.warn(
+          `[Inngest] Skipping problem created email - missing user details for problem ${problemId}`
+        );
+        return;
+      }
 
-      // TODO: Implement problem creation handling logic
+      logger.info(
+        `[Inngest] Sending problem created notification to ${userEmail}`
+      );
 
+      await sendProblemCreatedEmailHelper(
+        userEmail,
+        userName,
+        title,
+        problemId,
+        visibility
+      );
       logger.info(
         `[Inngest] Problem ${problemId} creation handled successfully`
       );
@@ -257,11 +278,25 @@ const handleProblemDeleted = inngest.createFunction(
   { event: 'colloquy/problem.deleted' },
   async ({ event }) => {
     try {
-      const { problemId, title, deletedBy } = event.data;
+      const { problemId, title, deletedBy, userEmail, userName } = event.data;
 
-      logger.info(`[Inngest] Handling problem deletion: ${problemId}`);
+      if (!userEmail || !userName) {
+        logger.warn(
+          `[Inngest] Skipping problem deleted email - missing user details for problem ${problemId}`
+        );
+        return;
+      }
 
-      // TODO: Implement problem deletion handling logic
+      logger.info(
+        `[Inngest] Sending problem deleted notification to ${userEmail}`
+      );
+
+      await sendProblemDeletedEmailHelper(
+        userEmail,
+        userName,
+        title,
+        problemId
+      );
 
       logger.info(
         `[Inngest] Problem ${problemId} deletion handled successfully`
@@ -269,6 +304,468 @@ const handleProblemDeleted = inngest.createFunction(
     } catch (error) {
       logger.error(`[Inngest] Error handling problem deletion: ${error}`);
       throw error; // Inngest will retry
+    }
+  }
+);
+
+/**
+ * Send session invitation email (all data from event)
+ */
+const handleSessionInvitation = inngest.createFunction(
+  {
+    id: 'send-session-invitation',
+    retries: 3,
+  },
+  { event: 'colloquy/session.participant-invited' },
+  async ({ event }) => {
+    try {
+      const {
+        sessionId,
+        sessionTitle,
+        scheduledFor,
+        userId,
+        userEmail,
+        userName,
+        hostName,
+        requiresPasscode,
+      } = event.data;
+
+      logger.info(
+        `[Inngest] Sending session invitation to ${userEmail} for session ${sessionId}`
+      );
+
+      await sendSessionInvitationEmailHelper(
+        userEmail,
+        userName,
+        hostName,
+        sessionTitle,
+        sessionId,
+        scheduledFor,
+        requiresPasscode
+      );
+
+      logger.info(
+        `[Inngest] Session invitation sent successfully to ${userEmail}`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error sending session invitation: ${error}`);
+      throw error;
+    }
+  }
+);
+
+/**
+ * Send session started notification (optimized DB query)
+ */
+const handleSessionStarted = inngest.createFunction(
+  {
+    id: 'send-session-started',
+    retries: 3,
+  },
+  { event: 'colloquy/session.started' },
+  async ({ event }) => {
+    try {
+      const { sessionId, sessionTitle, participantIds } = event.data;
+
+      logger.info(
+        `[Inngest] Handling session started event for session ${sessionId}`
+      );
+
+      if (participantIds.length === 0) {
+        logger.info(
+          `[Inngest] No participants to notify for session ${sessionId}`
+        );
+        return;
+      }
+
+      // Optimized: Fetch only users, not session + populate
+      const users = await UserModel.find({
+        id: { $in: participantIds },
+      })
+        .select('id name email')
+        .lean();
+
+      // Send emails to all participants
+      const emailPromises = users.map((user) =>
+        sendSessionStartedEmailHelper(
+          user.email,
+          user.name,
+          sessionTitle,
+          sessionId
+        )
+      );
+
+      await Promise.all(emailPromises);
+
+      logger.info(
+        `[Inngest] Session started notifications sent for session ${sessionId} (${emailPromises.length} emails)`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error sending session started emails: ${error}`);
+      throw error;
+    }
+  }
+);
+
+/**
+ * Send session ended notification (optimized DB query)
+ */
+const handleSessionEnded = inngest.createFunction(
+  {
+    id: 'send-session-ended',
+    retries: 3,
+  },
+  { event: 'colloquy/session.ended' },
+  async ({ event }) => {
+    try {
+      const { sessionId, sessionTitle, duration, hostId, participantIds } =
+        event.data;
+
+      logger.info(
+        `[Inngest] Sending session ended notifications for session ${sessionId}`
+      );
+
+      // Optimized: Fetch only users (host + participants)
+      const allUserIds = [hostId, ...participantIds];
+      const users = await UserModel.find({
+        id: { $in: allUserIds },
+      })
+        .select('id name email')
+        .lean();
+
+      const emailPromises = users.map((user) => {
+        const isHost = user.id === hostId;
+        return sendSessionEndedEmailHelper(
+          user.email,
+          user.name,
+          sessionTitle,
+          sessionId,
+          duration,
+          isHost
+        );
+      });
+
+      await Promise.all(emailPromises);
+
+      logger.info(
+        `[Inngest] Session ended notifications sent for session ${sessionId} (${emailPromises.length} emails)`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error sending session ended emails: ${error}`);
+      throw error;
+    }
+  }
+);
+
+/**
+ * Send feedback added notification (all data from event)
+ */
+const handleFeedbackAdded = inngest.createFunction(
+  {
+    id: 'send-feedback-added',
+    retries: 3,
+  },
+  { event: 'colloquy/session.feedback-added' },
+  async ({ event }) => {
+    try {
+      const {
+        sessionId,
+        sessionTitle,
+        participantEmail,
+        participantName,
+        hostName,
+        score,
+      } = event.data;
+
+      logger.info(
+        `[Inngest] Sending feedback notification to ${participantEmail} for session ${sessionId}`
+      );
+
+      await sendFeedbackAddedEmailHelper(
+        participantEmail,
+        participantName,
+        hostName,
+        sessionTitle,
+        sessionId,
+        score
+      );
+
+      logger.info(
+        `[Inngest] Feedback notification sent successfully to ${participantEmail}`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error sending feedback notification: ${error}`);
+      throw error;
+    }
+  }
+);
+
+/**
+ * Send session cancelled notification
+ */
+const handleSessionCancelled = inngest.createFunction(
+  {
+    id: 'send-session-cancelled',
+    retries: 3,
+  },
+  { event: 'colloquy/session.cancelled' },
+  async ({ event }) => {
+    try {
+      const {
+        sessionId,
+        sessionTitle,
+        scheduledFor,
+        hostId,
+        hostName,
+        participantIds,
+        reason,
+      } = event.data;
+
+      logger.info(
+        `[Inngest] Sending session cancelled notifications for session ${sessionId}`
+      );
+
+      if (participantIds.length === 0) {
+        logger.info(
+          `[Inngest] No participants to notify for session ${sessionId}`
+        );
+        return;
+      }
+
+      const users = await UserModel.find({
+        id: { $in: participantIds },
+      })
+        .select('id name email')
+        .lean();
+
+      const emailPromises = users.map((user) =>
+        sendSessionUpdateEmailHelper(
+          user.email,
+          user.name,
+          hostName,
+          sessionTitle,
+          'cancelled',
+          scheduledFor,
+          undefined,
+          reason
+        )
+      );
+
+      await Promise.all(emailPromises);
+
+      logger.info(
+        `[Inngest] Session cancelled notifications sent for session ${sessionId} (${emailPromises.length} emails)`
+      );
+    } catch (error) {
+      logger.error(
+        `[Inngest] Error sending session cancelled emails: ${error}`
+      );
+      throw error;
+    }
+  }
+);
+
+/**
+ * Send session rescheduled notification
+ */
+const handleSessionRescheduled = inngest.createFunction(
+  {
+    id: 'send-session-rescheduled',
+    retries: 3,
+  },
+  { event: 'colloquy/session.rescheduled' },
+  async ({ event }) => {
+    try {
+      const {
+        sessionId,
+        sessionTitle,
+        oldScheduledFor,
+        newScheduledFor,
+        hostId,
+        hostName,
+        participantIds,
+      } = event.data;
+
+      logger.info(
+        `[Inngest] Sending session rescheduled notifications for session ${sessionId}`
+      );
+
+      if (participantIds.length === 0) {
+        logger.info(
+          `[Inngest] No participants to notify for session ${sessionId}`
+        );
+        return;
+      }
+
+      const users = await UserModel.find({
+        id: { $in: participantIds },
+      })
+        .select('id name email')
+        .lean();
+
+      const emailPromises = users.map((user) =>
+        sendSessionUpdateEmailHelper(
+          user.email,
+          user.name,
+          hostName,
+          sessionTitle,
+          'rescheduled',
+          oldScheduledFor,
+          newScheduledFor
+        )
+      );
+
+      await Promise.all(emailPromises);
+
+      logger.info(
+        `[Inngest] Session rescheduled notifications sent for session ${sessionId} (${emailPromises.length} emails)`
+      );
+    } catch (error) {
+      logger.error(
+        `[Inngest] Error sending session rescheduled emails: ${error}`
+      );
+      throw error;
+    }
+  }
+);
+
+/**
+ * Send daily session reminders
+ */
+const sendDailySessionReminders = inngest.createFunction(
+  {
+    id: 'send-daily-session-reminders',
+  },
+  { cron: '0 0 * * *' },
+  async () => {
+    try {
+      logger.info('[Inngest] Starting daily session reminder job');
+
+      // Get today's date range
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Find all sessions scheduled for today
+      const sessions = await SessionModel.find({
+        scheduledFor: {
+          $gte: today,
+          $lt: tomorrow,
+        },
+        status: { $in: [SessionStatus.WAITING, SessionStatus.SCHEDULED] },
+      })
+        .select('id title scheduledFor hostId participants')
+        .populate({
+          model: 'User',
+          path: 'hostId',
+          select: 'id name email',
+          foreignField: 'id',
+        })
+        .populate({
+          model: 'User',
+          path: 'participants.userId',
+          select: 'id name email',
+          foreignField: 'id',
+        })
+        .lean();
+
+      if (sessions.length === 0) {
+        logger.info('[Inngest] No sessions scheduled for today');
+        return;
+      }
+
+      logger.info(
+        `[Inngest] Found ${sessions.length} sessions scheduled for today`
+      );
+
+      // Group sessions by host
+      const hostSessions = new Map<
+        string,
+        { email: string; name: string; sessions: any[] }
+      >();
+
+      sessions.forEach((session: any) => {
+        const host = session.hostId;
+        if (!hostSessions.has(host.id)) {
+          hostSessions.set(host.id, {
+            email: host.email,
+            name: host.name,
+            sessions: [],
+          });
+        }
+        hostSessions.get(host.id)!.sessions.push({
+          title: session.title,
+          id: session.id,
+          scheduledFor: new Date(session.scheduledFor),
+          participantCount: session.participants.filter(
+            (p: any) =>
+              (p.joinedAt || p.invitationStatus === 'accepted') && !p.leftAt
+          ).length,
+        });
+      });
+
+      // Send reminders to hosts
+      const hostEmailPromises = Array.from(hostSessions.values()).map(
+        (hostData) =>
+          sendDailySessionReminderEmailHelper(
+            hostData.email,
+            hostData.name,
+            hostData.sessions,
+            true // isHost
+          )
+      );
+
+      // Group sessions by participant
+      const participantSessions = new Map<
+        string,
+        { email: string; name: string; sessions: any[] }
+      >();
+
+      sessions.forEach((session: any) => {
+        session.participants
+          .filter(
+            (p: any) =>
+              (p.invitationStatus === 'accepted' || p.joinedAt) && !p.leftAt
+          )
+          .forEach((p: any) => {
+            const user = p.userId;
+            if (!participantSessions.has(user.id)) {
+              participantSessions.set(user.id, {
+                email: user.email,
+                name: user.name,
+                sessions: [],
+              });
+            }
+            participantSessions.get(user.id)!.sessions.push({
+              title: session.title,
+              id: session.id,
+              scheduledFor: new Date(session.scheduledFor),
+              participantCount: 0, // Not shown to participants
+            });
+          });
+      });
+
+      // Send reminders to participants
+      const participantEmailPromises = Array.from(
+        participantSessions.values()
+      ).map((participantData) =>
+        sendDailySessionReminderEmailHelper(
+          participantData.email,
+          participantData.name,
+          participantData.sessions,
+          false // isHost
+        )
+      );
+
+      await Promise.all([...hostEmailPromises, ...participantEmailPromises]);
+
+      logger.info(
+        `[Inngest] Daily session reminders sent: ${hostEmailPromises.length} hosts, ${participantEmailPromises.length} participants`
+      );
+    } catch (error) {
+      logger.error(`[Inngest] Error sending daily session reminders: ${error}`);
+      throw error;
     }
   }
 );
@@ -322,4 +819,11 @@ export const inngestFunctions = [
   handleProblemCreated,
   handleProblemDeleted,
   cleanupExpiredTokens,
+  handleSessionInvitation,
+  handleSessionStarted,
+  handleSessionEnded,
+  handleFeedbackAdded,
+  handleSessionCancelled,
+  handleSessionRescheduled,
+  sendDailySessionReminders,
 ];
