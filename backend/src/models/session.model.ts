@@ -20,8 +20,14 @@ export enum SessionVisibility {
   PRIVATE = 'private',
 }
 
+export enum InvitationStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+}
+
 // Interfaces
 export interface ICodeSubmission {
+  problemId: string;
   language: string;
   code: string;
   submittedAt: Date;
@@ -30,7 +36,9 @@ export interface ICodeSubmission {
 
 export interface ISessionParticipant {
   userId: string;
-  joinedAt: Date;
+  joinedAt: Date | null;
+  invitedAt?: Date;
+  invitationStatus?: InvitationStatus;
   leftAt?: Date;
   submittedCode: ICodeSubmission[];
   score?: number;
@@ -56,7 +64,6 @@ export interface ISession extends SoftDeleteDocument {
   participants: ISessionParticipant[];
   maxParticipants: number;
   problems: string[];
-  currentProblemIndex: number;
   streamCallId: string;
   streamChannelId: string;
   recordingEnabled: boolean;
@@ -66,10 +73,15 @@ export interface ISession extends SoftDeleteDocument {
   scheduledFor?: Date;
   startedAt?: Date;
   endedAt?: Date;
+  verifyPasscode(candidatePasscode: string): Promise<boolean>;
 }
 
 const codeSubmissionSchema = new Schema<ICodeSubmission>(
   {
+    problemId: {
+      type: String,
+      required: true,
+    },
     language: {
       type: String,
       required: true,
@@ -99,8 +111,15 @@ const participantSchema = new Schema<ISessionParticipant>(
     },
     joinedAt: {
       type: Date,
-      required: true,
-      default: Date.now,
+      required: false,
+      default: null,
+    },
+    invitedAt: {
+      type: Date,
+    },
+    invitationStatus: {
+      type: String,
+      enum: Object.values(InvitationStatus),
     },
     leftAt: {
       type: Date,
@@ -199,11 +218,6 @@ const sessionSchema = new Schema<ISession>(
     problems: {
       type: [String],
       default: [],
-    },
-    currentProblemIndex: {
-      type: Number,
-      default: 0,
-      min: 0,
     },
     streamCallId: {
       type: String,
