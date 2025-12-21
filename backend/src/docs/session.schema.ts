@@ -273,6 +273,15 @@ export const UpdateSessionBody = {
       type: 'string',
       format: 'date-time',
     },
+    status: {
+      type: 'string',
+      enum: ['scheduled', 'waiting', 'active', 'completed', 'cancelled'],
+    },
+    reason: {
+      type: 'string',
+      maxLength: 500,
+      description: 'Reason for status change, required if cancelling',
+    },
   },
 };
 

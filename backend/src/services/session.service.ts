@@ -31,6 +31,8 @@ interface UpdateSessionData {
   problems?: string[];
   recordingEnabled?: boolean;
   scheduledFor?: Date;
+  status: SessionStatus;
+  reason: string;
 }
 
 /**
@@ -252,9 +254,84 @@ export const updateSession = async (
     updateData.problems = problems;
   }
 
+  // Detect if session is being cancelled or rescheduled
+  const isCancelling =
+    updateData.status === SessionStatus.CANCELLED &&
+    session.status !== SessionStatus.CANCELLED;
+
+  const isRescheduling =
+    updateData.scheduledFor &&
+    session.scheduledFor &&
+    new Date(updateData.scheduledFor).getTime() !==
+      new Date(session.scheduledFor).getTime();
+
+  const oldScheduledFor = session.scheduledFor;
+
   // Apply updates
   Object.assign(session, updateData);
   await session.save();
+
+  // Handle cancellation email
+  if (isCancelling) {
+    const activeParticipantIds = session.participants
+      .filter((p) => !p.leftAt)
+      .map((p) => p.userId);
+
+    const host = await userService.getUserById(hostId);
+
+    try {
+      await inngest.send({
+        name: 'colloquy/session.cancelled',
+        data: {
+          sessionId: session.id,
+          sessionTitle: session.title,
+          scheduledFor: session.scheduledFor,
+          hostId,
+          hostName: host.name,
+          participantIds: activeParticipantIds,
+          reason: updateData.reason || 'No reason provided',
+        },
+      });
+      logger.info(
+        `[Inngest] Session cancelled event sent for session ${sessionId}`
+      );
+    } catch (error) {
+      logger.error(
+        `[Inngest] Failed to send session-cancelled event: ${error}`
+      );
+    }
+  }
+
+  // Handle rescheduling email
+  if (isRescheduling && !isCancelling) {
+    const activeParticipantIds = session.participants
+      .filter((p) => !p.leftAt)
+      .map((p) => p.userId);
+
+    const host = await userService.getUserById(hostId);
+
+    try {
+      await inngest.send({
+        name: 'colloquy/session.rescheduled',
+        data: {
+          sessionId: session.id,
+          sessionTitle: session.title,
+          oldScheduledFor,
+          newScheduledFor: session.scheduledFor,
+          hostId,
+          hostName: host.name,
+          participantIds: activeParticipantIds,
+        },
+      });
+      logger.info(
+        `[Inngest] Session rescheduled event sent for session ${sessionId}`
+      );
+    } catch (error) {
+      logger.error(
+        `[Inngest] Failed to send session-rescheduled event: ${error}`
+      );
+    }
+  }
 
   return session;
 };
@@ -628,6 +705,7 @@ export const inviteParticipants = async (
   }
 
   const users = await userService.getUsersByEmails(emails);
+  const host = await userService.getUserById(hostId);
 
   const results = emails.map((email) => {
     const user = users.find((u) => u.email === email);
@@ -663,16 +741,19 @@ export const inviteParticipants = async (
       submittedCode: [],
     });
 
-    // Emit event for email notification (will implement later)
+    // Emit event for email notification
     try {
       inngest.send({
         name: 'colloquy/session.participant-invited',
         data: {
           sessionId: session.id,
-          userId: user.id,
-          email: user.email,
-          hostId,
           sessionTitle: session.title,
+          scheduledFor: session.scheduledFor,
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.name,
+          hostId,
+          hostName: host.name,
           passcode:
             session.visibility === SessionVisibility.PRIVATE
               ? 'required'
@@ -739,10 +820,9 @@ export const startSession = async (
       name: 'colloquy/session.started',
       data: {
         sessionId: session.id,
+        sessionTitle: session.title,
         hostId,
-        participantIds: session.participants
-          .filter((p) => p.joinedAt && !p.leftAt)
-          .map((p) => p.userId),
+        participantIds: session.participants.map((p) => p.userId),
       },
     });
   } catch (error) {
@@ -826,15 +906,20 @@ export const endSession = async (
     // Don't throw - cleanup is best effort
   }
 
+  const duration = Math.round(
+    (session.endedAt!.getTime() - session.startedAt!.getTime()) / 60000
+  );
+
   // Emit event
   try {
     await inngest.send({
       name: 'colloquy/session.ended',
       data: {
         sessionId: session.id,
+        sessionTitle: session.title,
+        duration,
         hostId,
         participantIds: session.participants.map((p) => p.userId),
-        recordingUrl: session.recordingUrl,
       },
     });
   } catch (error) {
@@ -979,14 +1064,23 @@ export const addFeedback = async (
     `[Session] Feedback added for ${participantId} in session ${sessionId}`
   );
 
+  const [participantUser, hostUser] = await Promise.all([
+    userService.getUserById(participantId),
+    userService.getUserById(hostId),
+  ]);
+
   // Emit event
   try {
     await inngest.send({
       name: 'colloquy/session.feedback-added',
       data: {
         sessionId: session.id,
+        sessionTitle: session.title,
         participantId,
+        participantEmail: participantUser.email,
+        participantName: participantUser.name,
         hostId,
+        hostName: hostUser.name,
         score: participant.score,
       },
     });

@@ -29,6 +29,10 @@ export const updateSessionSchema = Joi.object({
   problems: Joi.array().items(Joi.string()).optional(),
   recordingEnabled: Joi.boolean().optional(),
   scheduledFor: Joi.date().greater('now').optional(),
+  status: Joi.string()
+    .optional()
+    .valid(...Object.values(SessionStatus)),
+  reason: Joi.string().optional().max(500).trim(),
 }).min(1);
 
 export const sessionQuerySchema = Joi.object({
