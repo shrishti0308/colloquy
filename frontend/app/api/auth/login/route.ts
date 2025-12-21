@@ -1,3 +1,4 @@
+import { buildBackendHeaders } from "@/app/api/headers";
 import { API_CONFIG } from "@/config/constants";
 import { logger } from "@/services/logger.service";
 import { NextRequest, NextResponse } from "next/server";
@@ -6,12 +7,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    const headers = buildBackendHeaders(request, {
+      "Content-Type": "application/json",
+    });
+
     // Call backend login endpoint
     const response = await fetch(`${API_CONFIG.BACKEND_URL}/auth/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(body),
       credentials: "include",
     });

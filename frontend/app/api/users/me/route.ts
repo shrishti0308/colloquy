@@ -1,3 +1,4 @@
+import { buildBackendHeaders } from "@/app/api/headers";
 import { API_CONFIG } from "@/config/constants";
 import { logger } from "@/services/logger.service";
 import { NextRequest, NextResponse } from "next/server";
@@ -17,13 +18,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const headers = buildBackendHeaders(request, {
+      "Content-Type": "application/json",
+      Authorization: authHeader,
+    });
+
     // Call backend /users/me endpoint with the token
     const response = await fetch(`${API_CONFIG.BACKEND_URL}/users/me`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: authHeader, // Forward the token
-      },
+      headers,
     });
 
     const data = await response.json();

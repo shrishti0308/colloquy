@@ -1,3 +1,4 @@
+import { buildBackendHeaders } from "@/app/api/headers";
 import { API_CONFIG } from "@/config/constants";
 import { logger } from "@/services/logger.service";
 import { cookies } from "next/headers";
@@ -9,12 +10,14 @@ export async function POST(request: NextRequest) {
 
     const refreshToken = cookieStore.get("refreshToken")?.value;
 
+    const headers = buildBackendHeaders(request, {
+      Cookie: `refreshToken=${refreshToken}`,
+    });
+
     if (refreshToken) {
       const response = await fetch(`${API_CONFIG.BACKEND_URL}/auth/logout`, {
         method: "POST",
-        headers: {
-          Cookie: `refreshToken=${refreshToken}`,
-        },
+        headers,
         credentials: "include",
       });
     }

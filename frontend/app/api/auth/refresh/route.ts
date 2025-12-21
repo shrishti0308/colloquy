@@ -1,3 +1,4 @@
+import { buildBackendHeaders } from "@/app/api/headers";
 import { API_CONFIG } from "@/config/constants";
 import { logger } from "@/services/logger.service";
 import { cookies } from "next/headers";
@@ -18,13 +19,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const headers = buildBackendHeaders(request, {
+      "Content-Type": "application/json",
+      Cookie: `refreshToken=${refreshToken}`,
+    });
+
     // Call backend refresh endpoint
     const response = await fetch(`${API_CONFIG.BACKEND_URL}/auth/refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `refreshToken=${refreshToken}`,
-      },
+      headers,
       credentials: "include",
     });
 
