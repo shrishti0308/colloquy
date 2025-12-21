@@ -18,6 +18,12 @@ export const SessionSchema = {
       enum: ['public', 'private'],
       example: 'public',
     },
+    hasPasscode: {
+      // NEW
+      type: 'boolean',
+      description: 'Indicates if session requires a passcode',
+      example: false,
+    },
     hostId: {
       type: 'string',
       example: 'user-id-123',
@@ -33,6 +39,17 @@ export const SessionSchema = {
           joinedAt: {
             type: 'string',
             format: 'date-time',
+            nullable: true, // NEW
+          },
+          invitedAt: {
+            // NEW
+            type: 'string',
+            format: 'date-time',
+          },
+          invitationStatus: {
+            // NEW
+            type: 'string',
+            enum: ['pending', 'accepted'],
           },
           leftAt: {
             type: 'string',
@@ -43,6 +60,10 @@ export const SessionSchema = {
             items: {
               type: 'object',
               properties: {
+                problemId: {
+                  type: 'string',
+                  example: 'problem-id-1',
+                },
                 language: {
                   type: 'string',
                 },
@@ -91,10 +112,6 @@ export const SessionSchema = {
         type: 'string',
       },
       example: ['default-blank-problem', 'problem-id-1', 'problem-id-2'],
-    },
-    currentProblemIndex: {
-      type: 'number',
-      example: 0,
     },
     streamCallId: {
       type: 'string',
@@ -257,4 +274,95 @@ export const UpdateSessionBody = {
       format: 'date-time',
     },
   },
+};
+
+export const JoinSessionBody = {
+  type: 'object',
+  properties: {
+    passcode: {
+      type: 'string',
+      description: 'Required for private sessions',
+      minLength: 4,
+      maxLength: 20,
+      example: 'secret123',
+    },
+  },
+};
+
+export const InviteParticipantsBody = {
+  type: 'object',
+  required: ['emails'],
+  properties: {
+    emails: {
+      type: 'array',
+      items: {
+        type: 'string',
+        format: 'email',
+      },
+      minItems: 1,
+      maxItems: 10,
+      example: ['candidate@example.com', 'another@example.com'],
+    },
+  },
+};
+
+export const SubmitCodeBody = {
+  type: 'object',
+  required: ['language', 'code'],
+  properties: {
+    problemId: {
+      type: 'string',
+      example: 'two-sum-problem-id',
+      description: 'ID of the problem being solved',
+    },
+    language: {
+      type: 'string',
+      example: 'javascript',
+    },
+    code: {
+      type: 'string',
+      example: 'function twoSum(nums, target) { ... }',
+    },
+    notes: {
+      type: 'string',
+      maxLength: 500,
+      example: 'Used hash map approach for O(n) complexity',
+    },
+  },
+};
+
+export const AddFeedbackBody = {
+  type: 'object',
+  properties: {
+    score: {
+      type: 'number',
+      minimum: 0,
+      maximum: 100,
+      example: 85,
+    },
+    feedback: {
+      type: 'string',
+      maxLength: 2000,
+      example: 'Great problem-solving skills and clear communication',
+    },
+    strengths: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+      example: [
+        'Clear communication',
+        'Efficient solutions',
+        'Good edge case handling',
+      ],
+    },
+    improvements: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+      example: ['Code documentation', 'Test case coverage'],
+    },
+  },
+  description: 'At least one field is required',
 };

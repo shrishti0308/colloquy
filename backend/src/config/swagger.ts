@@ -15,8 +15,12 @@ import {
 } from '../docs/problem.schema';
 import { responses } from '../docs/responses';
 import {
+  AddFeedbackBody,
   CreateSessionBody,
+  InviteParticipantsBody,
+  JoinSessionBody,
   SessionSchema,
+  SubmitCodeBody,
   UpdateSessionBody,
 } from '../docs/session.schema';
 import {
@@ -90,6 +94,10 @@ const options: swaggerJSDoc.Options = {
         Session: SessionSchema,
         CreateSessionBody: CreateSessionBody,
         UpdateSessionBody: UpdateSessionBody,
+        JoinSessionBody: JoinSessionBody,
+        InviteParticipantsBody: InviteParticipantsBody,
+        SubmitCodeBody: SubmitCodeBody,
+        AddFeedbackBody: AddFeedbackBody,
       },
       parameters: {
         ...parameters,
