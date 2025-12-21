@@ -31,8 +31,8 @@ interface UpdateSessionData {
   problems?: string[];
   recordingEnabled?: boolean;
   scheduledFor?: Date;
-  status: SessionStatus;
-  reason: string;
+  status?: SessionStatus;
+  reason?: string;
 }
 
 /**
@@ -1133,6 +1133,19 @@ export const acceptInvitation = async (
   participant.invitationStatus = InvitationStatus.ACCEPTED;
 
   await session.save();
+
+  // Add to Stream channel
+  try {
+    await streamService.addChannelMember(session.streamChannelId, userId);
+    logger.info(
+      `[Session] Added user ${userId} to Stream channel for session ${sessionId}`
+    );
+  } catch (error) {
+    logger.error(
+      `[Session] Failed to add user ${userId} to Stream channel: ${error}`
+    );
+    // Don't throw - user has still accepted the invitation
+  }
 
   logger.info(
     `[Session] User ${userId} accepted invitation for session ${sessionId}`

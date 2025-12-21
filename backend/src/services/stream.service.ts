@@ -188,8 +188,8 @@ export const getChannelMessages = async (
     const messages = await channel.query({ messages: { limit: 1000 } });
 
     return messages.messages.map((msg: any) => ({
-      userId: msg.user.id,
-      userName: msg.user.name,
+      userId: msg.user?.id,
+      userName: msg.user?.name,
       message: msg.text,
       timestamp: new Date(msg.created_at),
     }));

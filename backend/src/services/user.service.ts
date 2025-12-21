@@ -211,9 +211,7 @@ export const changeMyPassword = async (
  * @param emails - Array of email addresses
  * @returns Array of users
  */
-export const getUsersByEmails = async (
-  emails: string[]
-): Promise<IUser[]> => {
+export const getUsersByEmails = async (emails: string[]): Promise<IUser[]> => {
   const users = await UserModel.find({
     email: { $in: emails },
   }).select('id name email');

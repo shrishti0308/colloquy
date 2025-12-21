@@ -630,7 +630,7 @@ const handleSessionRescheduled = inngest.createFunction(
 );
 
 /**
- * Send daily session reminders (runs at 8:00 AM daily)
+ * Send daily session reminders
  */
 const sendDailySessionReminders = inngest.createFunction(
   {
@@ -825,4 +825,5 @@ export const inngestFunctions = [
   handleFeedbackAdded,
   handleSessionCancelled,
   handleSessionRescheduled,
+  sendDailySessionReminders,
 ];
