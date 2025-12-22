@@ -93,6 +93,15 @@ submissionSchema.index({ userId: 1, createdAt: -1 });
 submissionSchema.index({ problemId: 1, status: 1 });
 submissionSchema.index({ problemId: 1, createdAt: -1 });
 
+submissionSchema.pre('save', function (next) {
+  if (this.passedTestCases + this.failedTestCases !== this.totalTestCases) {
+    return next(
+      new Error('passedTestCases + failedTestCases must equal totalTestCases')
+    );
+  }
+  next();
+});
+
 // Soft delete plugin
 submissionSchema.plugin(MongooseDelete, {
   overrideMethods: 'all',

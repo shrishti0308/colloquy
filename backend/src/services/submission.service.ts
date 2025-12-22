@@ -26,6 +26,8 @@ interface SubmissionFilters {
   status?: SubmissionStatus;
 }
 
+const DEFAULT_BLANK_PROBLEM_ID = 'default-blank-problem';
+
 /**
  * Create a new submission.
  * @param submissionData - Submission details including problemId, code, language, and results
@@ -47,7 +49,7 @@ export const createSubmission = async (
   } = submissionData;
 
   // Check if problem exists and user has access (skip for default problem)
-  if (problemId !== 'default-blank-problem') {
+  if (problemId !== DEFAULT_BLANK_PROBLEM_ID) {
     const problem = await ProblemModel.findOne({ id: problemId });
 
     if (!problem) {
@@ -60,12 +62,6 @@ export const createSubmission = async (
     ) {
       throw new ApiError(403, 'You do not have access to this problem');
     }
-
-    // Increment problem attempt count
-    await ProblemModel.updateOne(
-      { id: problemId },
-      { $inc: { usageCount: 1 } }
-    );
   }
 
   // Create submission
@@ -79,6 +75,9 @@ export const createSubmission = async (
     failedTestCases,
     status,
   });
+
+  // Increment problem attempt count
+  await ProblemModel.updateOne({ id: problemId }, { $inc: { usageCount: 1 } });
 
   return submission;
 };
