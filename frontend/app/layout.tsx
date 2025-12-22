@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import type { Metadata } from "next";
 import { JetBrains_Mono, Poppins } from "next/font/google";
 import "./globals.css";
+import { LayoutWrapper } from "@/components/layout/LayoutWrapper";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -36,7 +37,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <QueryProvider>
             <AuthProvider>
-              {children}
+              <LayoutWrapper>{children}</LayoutWrapper>
               <Toaster
                 position="top-right"
                 closeButton
