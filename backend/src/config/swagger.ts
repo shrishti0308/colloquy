@@ -24,6 +24,10 @@ import {
   UpdateSessionBody,
 } from '../docs/session.schema';
 import {
+  CreateSubmissionBody,
+  SubmissionSchema,
+} from '../docs/submission.schema';
+import {
   AdminUpdateUserBody,
   ChangePasswordBody,
   UpdateProfileBody,
@@ -98,6 +102,8 @@ const options: swaggerJSDoc.Options = {
         InviteParticipantsBody: InviteParticipantsBody,
         SubmitCodeBody: SubmitCodeBody,
         AddFeedbackBody: AddFeedbackBody,
+        Submission: SubmissionSchema,
+        CreateSubmissionBody: CreateSubmissionBody,
       },
       parameters: {
         ...parameters,

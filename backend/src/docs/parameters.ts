@@ -97,4 +97,15 @@ export const parameters = {
       enum: ['scheduled', 'waiting', 'active', 'completed', 'cancelled'],
     },
   },
+  SubmissionUserId: {
+    name: 'userId',
+    in: 'path',
+    description: 'UUID of the user whose submissions are to be fetched',
+    required: true,
+    schema: {
+      type: 'string',
+      format: 'uuid',
+      example: '123e4567-e89b-12d3-a456-426614174002',
+    },
+  },
 };
