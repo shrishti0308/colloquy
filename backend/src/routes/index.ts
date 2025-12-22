@@ -4,6 +4,7 @@ import authRouter from './auth.route';
 import logRouter from './log.route';
 import problemRouter from './problem.route';
 import sessionRouter from './session.route';
+import submissionRouter from './submission.route';
 import userRouter from './user.route';
 
 const router = Router();
@@ -11,6 +12,7 @@ const router = Router();
 router.use('/auth', authRouter);
 router.use('/users', userRouter);
 router.use('/problems', problemRouter);
+router.use('/submissions', submissionRouter);
 router.use('/sessions', sessionRouter);
 router.use('/logs', logRouter);
 
