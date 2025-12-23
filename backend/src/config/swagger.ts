@@ -33,6 +33,7 @@ import {
   UpdateProfileBody,
   UserSchema,
 } from '../docs/user.schema';
+import { paginationSchema } from '../docs/common.schema';
 
 const options: swaggerJSDoc.Options = {
   definition: {
@@ -104,6 +105,7 @@ const options: swaggerJSDoc.Options = {
         AddFeedbackBody: AddFeedbackBody,
         Submission: SubmissionSchema,
         CreateSubmissionBody: CreateSubmissionBody,
+        paginationSchema: paginationSchema,
       },
       parameters: {
         ...parameters,
