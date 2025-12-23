@@ -7,6 +7,7 @@ import SessionModel, {
 } from '../models/session.model';
 import ApiError from '../utils/apiError';
 import logger from '../utils/logger';
+import { PaginationParams } from '../utils/pagination';
 import * as problemService from './problem.service';
 import * as streamService from './stream.service';
 import * as userService from './user.service';
@@ -391,14 +392,18 @@ export const deleteSession = async (
 };
 
 /**
- * Get all sessions (with filters).
+ * Get all sessions (with filters and pagination).
  * @param filters - Filter options including visibility and status
- * @returns Array of session objects
+ * @param paginationParams - Pagination parameters
+ * @returns Array of session objects and total count
  */
-export const getAllSessions = async (filters: {
-  visibility?: SessionVisibility;
-  status?: SessionStatus;
-}): Promise<ISession[]> => {
+export const getAllSessions = async (
+  filters: {
+    visibility?: SessionVisibility;
+    status?: SessionStatus;
+  },
+  paginationParams?: PaginationParams
+): Promise<{ sessions: ISession[]; total: number }> => {
   const query: any = {
     status: { $in: [SessionStatus.WAITING, SessionStatus.SCHEDULED] },
   };
@@ -411,18 +416,29 @@ export const getAllSessions = async (filters: {
     query.status = filters.status;
   }
 
-  const sessions = await SessionModel.find(query)
+  let sessionQuery = SessionModel.find(query)
     .populate({
       model: 'User',
       path: 'hostId',
       foreignField: 'id',
       select: 'id name email',
     })
-    .sort({ scheduledFor: 1, createdAt: -1 })
-    .limit(50)
-    .exec();
+    .sort({ scheduledFor: 1, createdAt: -1 });
 
-  return sessions.map((session) => {
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    sessionQuery = sessionQuery.skip(skip).limit(limit);
+  } else {
+    sessionQuery = sessionQuery.limit(50);
+  }
+
+  const [sessions, total] = await Promise.all([
+    sessionQuery.exec(),
+    SessionModel.countDocuments(query),
+  ]);
+
+  const formattedSessions = sessions.map((session) => {
     const sessionObj = session.toJSON();
 
     const activeParticipantCount = session.participants.filter(
@@ -442,48 +458,64 @@ export const getAllSessions = async (filters: {
       hasPasscode: session.visibility === SessionVisibility.PRIVATE,
     } as any;
   });
+
+  return { sessions: formattedSessions, total };
 };
 
 /**
- * Get sessions hosted by user.
+ * Get sessions hosted by user with pagination.
  * @param hostId - ID of the host user
  * @param filters - Filter options including status
- * @returns Array of session objects
+ * @param paginationParams - Pagination parameters
+ * @returns Array of session objects and total count
  */
 export const getMyHostedSessions = async (
   hostId: string,
-  filters: { status?: SessionStatus }
-): Promise<ISession[]> => {
+  filters: { status?: SessionStatus },
+  paginationParams?: PaginationParams
+): Promise<{ sessions: ISession[]; total: number }> => {
   const query: any = { hostId };
 
   if (filters.status) {
     query.status = filters.status;
   }
 
-  const sessions = await SessionModel.find(query)
+  let sessionQuery = SessionModel.find(query)
     .populate({
       model: 'User',
       path: 'participants.userId',
       select: 'id name email',
       foreignField: 'id',
     })
-    .sort({ createdAt: -1 })
-    .exec();
+    .sort({ createdAt: -1 });
 
-  return sessions;
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    sessionQuery = sessionQuery.skip(skip).limit(limit);
+  }
+
+  const [sessions, total] = await Promise.all([
+    sessionQuery.exec(),
+    SessionModel.countDocuments(query),
+  ]);
+
+  return { sessions, total };
 };
 
 /**
- * Get sessions where user is a participant (with privacy filters)
+ * Get sessions where user is a participant (with privacy filters and pagination)
  * @param userId - ID of the user
- * @returns Array of session objects with filtered participant data
+ * @param paginationParams - Pagination parameters
+ * @returns Array of session objects with filtered participant data and total count
  */
 export const getMyParticipatedSessions = async (
-  userId: string
-): Promise<ISession[]> => {
-  const sessions = await SessionModel.find({
-    'participants.userId': userId,
-  })
+  userId: string,
+  paginationParams?: PaginationParams
+): Promise<{ sessions: ISession[]; total: number }> => {
+  const query = { 'participants.userId': userId };
+
+  let sessionQuery = SessionModel.find(query)
     .populate({
       model: 'User',
       path: 'hostId',
@@ -496,11 +528,21 @@ export const getMyParticipatedSessions = async (
       select: 'id name email',
       foreignField: 'id',
     })
-    .sort({ createdAt: -1 })
-    .exec();
+    .sort({ createdAt: -1 });
+
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    sessionQuery = sessionQuery.skip(skip).limit(limit);
+  }
+
+  const [sessions, total] = await Promise.all([
+    sessionQuery.exec(),
+    SessionModel.countDocuments(query),
+  ]);
 
   // Filter sensitive participant data
-  return sessions.map((session) => {
+  const filteredSessions = sessions.map((session) => {
     const sessionObj = session.toJSON();
 
     sessionObj.participants = sessionObj.participants.map((p: any) => {
@@ -519,6 +561,65 @@ export const getMyParticipatedSessions = async (
 
     return sessionObj as any;
   });
+
+  return { sessions: filteredSessions, total };
+};
+
+/**
+ * Get all sessions (admin only) with filters and pagination.
+ * @param filters - Filter options including visibility, status, and hostId
+ * @param paginationParams - Pagination parameters
+ * @returns Array of all session objects and total count
+ */
+export const getAllSessionsAdmin = async (
+  filters: {
+    visibility?: SessionVisibility;
+    status?: SessionStatus;
+    hostId?: string;
+  },
+  paginationParams?: PaginationParams
+): Promise<{ sessions: ISession[]; total: number }> => {
+  const query: any = {};
+
+  if (filters.visibility) {
+    query.visibility = filters.visibility;
+  }
+
+  if (filters.status) {
+    query.status = filters.status;
+  }
+
+  if (filters.hostId) {
+    query.hostId = filters.hostId;
+  }
+
+  let sessionQuery = SessionModel.find(query)
+    .populate({
+      model: 'User',
+      path: 'hostId',
+      foreignField: 'id',
+      select: 'id name email',
+    })
+    .populate({
+      model: 'User',
+      path: 'participants.userId',
+      select: 'id name email',
+      foreignField: 'id',
+    })
+    .sort({ createdAt: -1 });
+
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    sessionQuery = sessionQuery.skip(skip).limit(limit);
+  }
+
+  const [sessions, total] = await Promise.all([
+    sessionQuery.exec(),
+    SessionModel.countDocuments(query),
+  ]);
+
+  return { sessions, total };
 };
 
 /**

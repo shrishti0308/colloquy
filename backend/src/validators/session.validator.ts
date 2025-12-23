@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { SessionStatus, SessionVisibility } from '../models/session.model';
+import { paginationSchema } from './common.validator';
 
 export const createSessionSchema = Joi.object({
   title: Joi.string().required().min(3).max(200).trim(),
@@ -42,7 +43,17 @@ export const sessionQuerySchema = Joi.object({
   status: Joi.string()
     .valid(...Object.values(SessionStatus))
     .optional(),
-});
+}).concat(paginationSchema);
+
+export const adminSessionQuerySchema = Joi.object({
+  visibility: Joi.string()
+    .valid(...Object.values(SessionVisibility))
+    .optional(),
+  status: Joi.string()
+    .valid(...Object.values(SessionStatus))
+    .optional(),
+  hostId: Joi.string().optional(),
+}).concat(paginationSchema);
 
 export const joinSessionSchema = Joi.object({
   passcode: Joi.string().min(4).max(20).optional(),
