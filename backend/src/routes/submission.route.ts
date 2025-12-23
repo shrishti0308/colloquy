@@ -4,6 +4,7 @@ import { authorizeRoles, protect } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/joi.middleware';
 import { UserRole } from '../models/user.model';
 import {
+  adminSubmissionQuerySchema,
   createSubmissionSchema,
   submissionQuerySchema,
 } from '../validators/submission.validator';
@@ -31,6 +32,8 @@ router.use(protect);
  *       - $ref: '#/components/parameters/ProblemDifficulty'
  *       - $ref: '#/components/parameters/ProblemTags'
  *       - $ref: '#/components/parameters/SearchQuery'
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *       - name: status
  *         in: query
  *         description: Filter by submission status
@@ -55,6 +58,8 @@ router.use(protect);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Submission'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  */
@@ -111,6 +116,8 @@ router.get(
  *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/SubmissionUserId'
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: User submissions fetched successfully
@@ -129,6 +136,8 @@ router.get(
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Submission'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  *       "403":
@@ -161,6 +170,8 @@ router.get(
  *         schema:
  *           type: string
  *           enum: [pass, partial, fail, error]
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: All submissions fetched successfully
@@ -179,6 +190,8 @@ router.get(
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Submission'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  *       "403":
@@ -223,7 +236,11 @@ router.get(
  */
 router
   .route('/')
-  .get(authorizeRoles(UserRole.ADMIN), submissionController.getAllSubmissions)
+  .get(
+    authorizeRoles(UserRole.ADMIN),
+    validate(adminSubmissionQuerySchema, 'query'),
+    submissionController.getAllSubmissions
+  )
   .post(
     validate(createSubmissionSchema),
     submissionController.createSubmission

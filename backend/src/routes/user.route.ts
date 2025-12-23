@@ -5,6 +5,7 @@ import { UserRole } from '../models/user.model';
 import {
   adminUpdateUserSchema,
   changePasswordSchema,
+  getUsersQuerySchema,
   updateProfileSchema,
 } from '../validators/user.validator';
 import { validate } from '../middlewares/joi.middleware';
@@ -170,6 +171,9 @@ router.use(authorizeRoles(UserRole.ADMIN));
  *     tags: [User (Admin)]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: A list of users.
@@ -188,22 +192,31 @@ router.use(authorizeRoles(UserRole.ADMIN));
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/User'
+ *                 pagination:
+ *                    $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  *       "403":
  *         $ref: '#/components/responses/ForbiddenError'
  */
-router.get('/', userController.getAllUsers);
+router.get(
+  '/',
+  validate(getUsersQuerySchema, 'query'),
+  userController.getAllUsers
+);
 
 /**
  * @swagger
  * /users/deleted:
  *   get:
  *     summary: Get all soft-deleted users (Admin)
- *     description: Fetches a list of all user accounts that have been soft-deleted.
+ *     description: Fetches a paginated list of all user accounts that have been soft-deleted.
  *     tags: [User (Admin)]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: A list of soft-deleted users.
@@ -222,12 +235,18 @@ router.get('/', userController.getAllUsers);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/User'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  *       "403":
  *         $ref: '#/components/responses/ForbiddenError'
  */
-router.get('/deleted', userController.getDeletedUsers);
+router.get(
+  '/deleted',
+  validate(getUsersQuerySchema, 'query'),
+  userController.getDeletedUsers
+);
 
 /**
  * @swagger

@@ -3,6 +3,7 @@ import {
   ProblemDifficulty,
   ProgrammingLanguage,
 } from '../models/problem.model';
+import { paginationSchema } from './common.validator';
 
 export const createProblemSchema = Joi.object({
   title: Joi.string().required().min(3).max(200).trim(),
@@ -78,4 +79,4 @@ export const problemQuerySchema = Joi.object({
     .try(Joi.string(), Joi.array().items(Joi.string()))
     .optional(),
   search: Joi.string().optional(),
-});
+}).concat(paginationSchema);

@@ -8,6 +8,7 @@ import {
   problemQuerySchema,
   updateProblemSchema,
 } from '../validators/problem.validator';
+import { paginationSchema } from '../validators/common.validator';
 
 const router = Router();
 
@@ -49,10 +50,13 @@ router.get('/default', problemController.getDefaultProblem);
  * /problems/my:
  *   get:
  *     summary: Get my created problems
- *     description: Fetches all problems created by the authenticated user
+ *     description: Fetches all problems created by the authenticated user with pagination
  *     tags: [Problems]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: Problems fetched successfully
@@ -71,12 +75,15 @@ router.get('/default', problemController.getDefaultProblem);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Problem'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/my',
   authorizeRoles(UserRole.INTERVIEWER, UserRole.ADMIN),
+  validate(paginationSchema, 'query'),
   problemController.getMyProblems
 );
 
@@ -93,6 +100,8 @@ router.get(
  *       - $ref: '#/components/parameters/ProblemDifficulty'
  *       - $ref: '#/components/parameters/ProblemTags'
  *       - $ref: '#/components/parameters/SearchQuery'
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: Problems fetched successfully
@@ -111,6 +120,8 @@ router.get(
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Problem'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  *

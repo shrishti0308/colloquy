@@ -3,6 +3,10 @@ import { SessionStatus, SessionVisibility } from '../models/session.model';
 import * as sessionService from '../services/session.service';
 import ApiResponse from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
+import {
+  buildPaginationMetadata,
+  getPaginationParams,
+} from '../utils/pagination';
 
 /**
  * @desc    Create a new session
@@ -48,17 +52,72 @@ export const getSessionById = asyncHandler(
  */
 export const getActiveSessions = asyncHandler(
   async (req: Request, res: Response) => {
+    const paginationParams = getPaginationParams(req.query);
+
     const filters = {
       visibility: req.query.visibility as SessionVisibility | undefined,
       status: req.query.status as SessionStatus | undefined,
     };
 
-    const sessions = await sessionService.getAllSessions(filters);
+    const { sessions, total } = await sessionService.getAllSessions(
+      filters,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
+    );
 
     res
       .status(200)
       .json(
-        new ApiResponse(200, sessions, 'Active sessions fetched successfully')
+        new ApiResponse(
+          200,
+          sessions,
+          'Active sessions fetched successfully',
+          pagination
+        )
+      );
+  }
+);
+
+/**
+ * @desc    Get all sessions (admin)
+ * @route   GET /api/v1/sessions/admin/all
+ * @access  Admin
+ */
+export const getAllSessionsAdmin = asyncHandler(
+  async (req: Request, res: Response) => {
+    const paginationParams = getPaginationParams(req.query);
+
+    const filters = {
+      visibility: req.query.visibility as SessionVisibility | undefined,
+      status: req.query.status as SessionStatus | undefined,
+      hostId: req.query.hostId as string | undefined,
+    };
+
+    const { sessions, total } = await sessionService.getAllSessionsAdmin(
+      filters,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
+    );
+
+    res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          sessions,
+          'All sessions fetched successfully',
+          pagination
+        )
       );
   }
 );
@@ -70,19 +129,33 @@ export const getActiveSessions = asyncHandler(
  */
 export const getMyHostedSessions = asyncHandler(
   async (req: Request, res: Response) => {
+    const paginationParams = getPaginationParams(req.query);
+
     const filters = {
       status: req.query.status as SessionStatus | undefined,
     };
 
-    const sessions = await sessionService.getMyHostedSessions(
+    const { sessions, total } = await sessionService.getMyHostedSessions(
       req.user!.id,
-      filters
+      filters,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
     );
 
     res
       .status(200)
       .json(
-        new ApiResponse(200, sessions, 'Hosted sessions fetched successfully')
+        new ApiResponse(
+          200,
+          sessions,
+          'Hosted sessions fetched successfully',
+          pagination
+        )
       );
   }
 );
@@ -94,8 +167,17 @@ export const getMyHostedSessions = asyncHandler(
  */
 export const getMyParticipatedSessions = asyncHandler(
   async (req: Request, res: Response) => {
-    const sessions = await sessionService.getMyParticipatedSessions(
-      req.user!.id
+    const paginationParams = getPaginationParams(req.query);
+
+    const { sessions, total } = await sessionService.getMyParticipatedSessions(
+      req.user!.id,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
     );
 
     res
@@ -104,7 +186,8 @@ export const getMyParticipatedSessions = asyncHandler(
         new ApiResponse(
           200,
           sessions,
-          'Participated sessions fetched successfully'
+          'Participated sessions fetched successfully',
+          pagination
         )
       );
   }

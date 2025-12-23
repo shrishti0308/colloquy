@@ -2,14 +2,30 @@ import { inngest } from '../config/inngest';
 import UserModel, { IUser } from '../models/user.model';
 import ApiError from '../utils/apiError';
 import logger from '../utils/logger';
+import { PaginationParams } from '../utils/pagination';
 
 /**
  * Get all users.
- * @returns List of all users
+ * @param paginationParams - Pagination parameters
+ * @returns List of all users and total count
  */
-export const getAllUsers = async (): Promise<IUser[]> => {
-  const users = await UserModel.find();
-  return users;
+export const getAllUsers = async (
+  paginationParams?: PaginationParams
+): Promise<{ users: IUser[]; total: number }> => {
+  let query = UserModel.find();
+
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+  }
+
+  const [users, total] = await Promise.all([
+    query.exec(),
+    UserModel.countDocuments(),
+  ]);
+
+  return { users, total };
 };
 
 /**
@@ -110,13 +126,27 @@ export const restoreUser = async (id: string): Promise<IUser> => {
 };
 
 /**
- * Get all soft-deleted users.
- * @returns List of all soft-deleted users
+ * Get all soft-deleted users with pagination.
+ * @param paginationParams - Pagination parameters
+ * @returns List of all soft-deleted users and total count
  */
-export const getDeletedUsers = async (): Promise<IUser[]> => {
-  const users = await UserModel.findDeleted();
+export const getDeletedUsers = async (
+  paginationParams?: PaginationParams
+): Promise<{ users: IUser[]; total: number }> => {
+  let query = UserModel.findDeleted();
 
-  return users;
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+  }
+
+  const [users, total] = await Promise.all([
+    query.exec(),
+    UserModel.countDocumentsDeleted(),
+  ]);
+
+  return { users, total };
 };
 
 /**

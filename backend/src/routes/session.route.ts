@@ -6,6 +6,7 @@ import { UserRole } from '../models/user.model';
 import {
   acceptInvitationSchema,
   addFeedbackSchema,
+  adminSessionQuerySchema,
   createSessionSchema,
   inviteParticipantsSchema,
   joinSessionSchema,
@@ -31,6 +32,8 @@ router.use(protect);
  *     parameters:
  *       - $ref: '#/components/parameters/SessionVisibility'
  *       - $ref: '#/components/parameters/SessionStatus'
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: Active sessions fetched successfully
@@ -49,6 +52,8 @@ router.use(protect);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Session'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  */
@@ -69,6 +74,8 @@ router.get(
  *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/SessionStatus'
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: Hosted sessions fetched successfully
@@ -87,6 +94,8 @@ router.get(
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Session'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  */
@@ -105,6 +114,9 @@ router.get(
  *     tags: [Sessions]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
  *     responses:
  *       "200":
  *         description: Participated sessions fetched successfully
@@ -123,10 +135,63 @@ router.get(
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Session'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
  *       "401":
  *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get('/my/participated', sessionController.getMyParticipatedSessions);
+
+/**
+ * @swagger
+ * /sessions/admin/all:
+ *   get:
+ *     summary: Get all sessions (Admin)
+ *     description: Fetches all sessions irrespective of status with filters and pagination
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/SessionVisibility'
+ *       - $ref: '#/components/parameters/SessionStatus'
+ *       - name: hostId
+ *         in: query
+ *         description: Filter by host user ID
+ *         schema:
+ *           type: string
+ *       - $ref: '#/components/parameters/PaginationPage'
+ *       - $ref: '#/components/parameters/PaginationLimit'
+ *     responses:
+ *       "200":
+ *         description: All sessions fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All sessions fetched successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Session'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/paginationSchema'
+ *       "401":
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       "403":
+ *         $ref: '#/components/responses/ForbiddenError'
+ */
+router.get(
+  '/admin/all',
+  authorizeRoles(UserRole.ADMIN),
+  validate(adminSessionQuerySchema, 'query'),
+  sessionController.getAllSessionsAdmin
+);
 
 /**
  * @swagger

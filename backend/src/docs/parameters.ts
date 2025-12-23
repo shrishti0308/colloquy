@@ -108,4 +108,27 @@ export const parameters = {
       example: '123e4567-e89b-12d3-a456-426614174002',
     },
   },
+  PaginationPage: {
+    name: 'page',
+    in: 'query',
+    description: 'Page number for pagination',
+    required: false,
+    schema: {
+      type: 'integer',
+      minimum: 1,
+      default: 1,
+    },
+  },
+  PaginationLimit: {
+    name: 'limit',
+    in: 'query',
+    description: 'Number of items per page',
+    required: false,
+    schema: {
+      type: 'integer',
+      minimum: 1,
+      maximum: 100,
+      default: 10,
+    },
+  },
 };
