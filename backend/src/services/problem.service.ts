@@ -8,6 +8,7 @@ import ProblemModel, {
 import { UserRole } from '../models/user.model';
 import ApiError from '../utils/apiError';
 import logger from '../utils/logger';
+import { PaginationParams } from '../utils/pagination';
 
 interface CreateProblemData {
   title: string;
@@ -193,15 +194,17 @@ export const createProblem = async (
 };
 
 /**
- * Get all problems accessible to user.
+ * Get all problems accessible to user with pagination.
  * @param userId - ID of the user requesting problems
  * @param filters - Optional filters for difficulty, tags, and search
- * @returns Array of problems accessible to the user
+ * @param paginationParams - Pagination parameters
+ * @returns Array of problems accessible to the user and total count
  */
 export const getAllProblems = async (
   userId: string,
-  filters: ProblemFilters = {}
-): Promise<IProblem[]> => {
+  filters: ProblemFilters = {},
+  paginationParams?: PaginationParams
+): Promise<{ problems: IProblem[]; total: number }> => {
   const query: any = {
     $or: [
       { visibility: ProblemVisibility.PUBLIC },
@@ -224,17 +227,27 @@ export const getAllProblems = async (
     query.title = { $regex: filters.search, $options: 'i' };
   }
 
-  const problems = await ProblemModel.find(query)
+  let problemQuery = ProblemModel.find(query)
     .populate({
       model: 'User',
       path: 'createdBy',
       foreignField: 'id',
       select: 'id name email',
     })
-    .sort({ usageCount: -1, createdAt: -1 })
-    .exec();
+    .sort({ usageCount: -1, createdAt: -1 });
 
-  return problems;
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    problemQuery = problemQuery.skip(skip).limit(limit);
+  }
+
+  const [problems, total] = await Promise.all([
+    problemQuery.exec(),
+    ProblemModel.countDocuments(query),
+  ]);
+
+  return { problems, total };
 };
 
 /**
@@ -396,16 +409,29 @@ export const toggleVisibility = async (
 };
 
 /**
- * Get problems created by current user.
+ * Get problems created by current user with pagination.
  * @param userId - ID of the user whose problems to retrieve
- * @returns Array of problems created by the user
+ * @param paginationParams - Pagination parameters
+ * @returns Array of problems created by the user and total count
  */
-export const getMyProblems = async (userId: string): Promise<IProblem[]> => {
-  const problems = await ProblemModel.find({ createdBy: userId })
-    .sort({ createdAt: -1 })
-    .exec();
+export const getMyProblems = async (
+  userId: string,
+  paginationParams?: PaginationParams
+): Promise<{ problems: IProblem[]; total: number }> => {
+  let query = ProblemModel.find({ createdBy: userId }).sort({ createdAt: -1 });
 
-  return problems;
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+  }
+
+  const [problems, total] = await Promise.all([
+    query.exec(),
+    ProblemModel.countDocuments({ createdBy: userId }),
+  ]);
+
+  return { problems, total };
 };
 
 /**

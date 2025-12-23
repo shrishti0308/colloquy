@@ -3,6 +3,10 @@ import { ProblemDifficulty } from '../models/problem.model';
 import * as problemService from '../services/problem.service';
 import ApiResponse from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
+import {
+  buildPaginationMetadata,
+  getPaginationParams,
+} from '../utils/pagination';
 
 /**
  * @desc    Create a new problem
@@ -32,6 +36,8 @@ export const createProblem = asyncHandler(
  */
 export const getAllProblems = asyncHandler(
   async (req: Request, res: Response) => {
+    const paginationParams = getPaginationParams(req.query);
+
     const filters = {
       difficulty: req.query.difficulty as ProblemDifficulty | undefined,
       tags: req.query.tags
@@ -42,11 +48,28 @@ export const getAllProblems = asyncHandler(
       search: req.query.search as string | undefined,
     };
 
-    const problems = await problemService.getAllProblems(req.user!.id, filters);
+    const { problems, total } = await problemService.getAllProblems(
+      req.user!.id,
+      filters,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
+    );
 
     res
       .status(200)
-      .json(new ApiResponse(200, problems, 'Problems fetched successfully'));
+      .json(
+        new ApiResponse(
+          200,
+          problems,
+          'Problems fetched successfully',
+          pagination
+        )
+      );
   }
 );
 
@@ -154,12 +177,28 @@ export const toggleVisibility = asyncHandler(
  */
 export const getMyProblems = asyncHandler(
   async (req: Request, res: Response) => {
-    const problems = await problemService.getMyProblems(req.user!.id);
+    const paginationParams = getPaginationParams(req.query);
+
+    const { problems, total } = await problemService.getMyProblems(
+      req.user!.id,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
+    );
 
     res
       .status(200)
       .json(
-        new ApiResponse(200, problems, 'Your problems fetched successfully')
+        new ApiResponse(
+          200,
+          problems,
+          'Your problems fetched successfully',
+          pagination
+        )
       );
   }
 );
