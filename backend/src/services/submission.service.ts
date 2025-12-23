@@ -7,6 +7,7 @@ import SubmissionModel, {
   SubmissionStatus,
 } from '../models/submission.model';
 import ApiError from '../utils/apiError';
+import { PaginationParams } from '../utils/pagination';
 
 interface CreateSubmissionData {
   problemId: string;
@@ -83,15 +84,17 @@ export const createSubmission = async (
 };
 
 /**
- * Get all submissions for current user with filters.
+ * Get all submissions for current user with filters and pagination.
  * @param userId - ID of the user whose submissions to retrieve
  * @param filters - Optional filters for problemId, difficulty, tags, search, and status
- * @returns Array of submissions
+ * @param paginationParams - Pagination parameters
+ * @returns Array of submissions and total count
  */
 export const getMySubmissions = async (
   userId: string,
-  filters: SubmissionFilters = {}
-): Promise<ISubmission[]> => {
+  filters: SubmissionFilters = {},
+  paginationParams?: PaginationParams
+): Promise<{ submissions: ISubmission[]; total: number }> => {
   const { problemId, difficulty, tags, search, status } = filters;
 
   const problemFilter: any = {};
@@ -114,7 +117,7 @@ export const getMySubmissions = async (
     problemIds = problems.map((p) => p.id);
 
     if (problemIds.length === 0) {
-      return [];
+      return { submissions: [], total: 0 };
     }
   }
 
@@ -130,28 +133,39 @@ export const getMySubmissions = async (
     submissionFilter.status = status;
   }
 
-  const submissions = await SubmissionModel.find(submissionFilter)
+  let query = SubmissionModel.find(submissionFilter)
     .populate({
       model: 'Problem',
       path: 'problemId',
       foreignField: 'id',
       select: 'id title tags difficulty',
     })
-    .sort({
-      createdAt: -1,
-    });
+    .sort({ createdAt: -1 });
 
-  return submissions;
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+  }
+
+  const [submissions, total] = await Promise.all([
+    query.exec(),
+    SubmissionModel.countDocuments(submissionFilter),
+  ]);
+
+  return { submissions, total };
 };
 
 /**
- * Get all submissions (admin only).
+ * Get all submissions (admin only) with pagination.
  * @param filters - Optional filters
- * @returns Array of submissions
+ * @param paginationParams - Pagination parameters
+ * @returns Array of submissions and total count
  */
 export const getAllSubmissions = async (
-  filters: SubmissionFilters = {}
-): Promise<ISubmission[]> => {
+  filters: SubmissionFilters = {},
+  paginationParams?: PaginationParams
+): Promise<{ submissions: ISubmission[]; total: number }> => {
   const { problemId, status } = filters;
 
   const filter: any = {};
@@ -164,7 +178,7 @@ export const getAllSubmissions = async (
     filter.status = status;
   }
 
-  const submissions = await SubmissionModel.find(filter)
+  let query = SubmissionModel.find(filter)
     .populate({
       model: 'User',
       path: 'userId',
@@ -177,11 +191,20 @@ export const getAllSubmissions = async (
       foreignField: 'id',
       select: 'id title tags difficulty',
     })
-    .sort({
-      createdAt: -1,
-    });
+    .sort({ createdAt: -1 });
 
-  return submissions;
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+  }
+
+  const [submissions, total] = await Promise.all([
+    query.exec(),
+    SubmissionModel.countDocuments(filter),
+  ]);
+
+  return { submissions, total };
 };
 
 /**
@@ -202,14 +225,16 @@ export const getSubmissionById = async (
 };
 
 /**
- * Get all submissions for a user (admin only).
+ * Get all submissions for a user (admin only) with pagination.
  * @param userId - ID of the user
- * @returns Array of submissions
+ * @param paginationParams - Pagination parameters
+ * @returns Array of submissions and total count
  */
 export const getSubmissionsByUser = async (
-  userId: string
-): Promise<ISubmission[]> => {
-  const submissions = await SubmissionModel.find({ userId })
+  userId: string,
+  paginationParams?: PaginationParams
+): Promise<{ submissions: ISubmission[]; total: number }> => {
+  let query = SubmissionModel.find({ userId })
     .populate({
       model: 'User',
       path: 'userId',
@@ -222,11 +247,20 @@ export const getSubmissionsByUser = async (
       foreignField: 'id',
       select: 'id title tags difficulty',
     })
-    .sort({
-      createdAt: -1,
-    });
+    .sort({ createdAt: -1 });
 
-  return submissions;
+  if (paginationParams) {
+    const { page, limit } = paginationParams;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+  }
+
+  const [submissions, total] = await Promise.all([
+    query.exec(),
+    SubmissionModel.countDocuments({ userId }),
+  ]);
+
+  return { submissions, total };
 };
 
 /**

@@ -4,6 +4,7 @@ import {
   ProgrammingLanguage,
 } from '../models/problem.model';
 import { SubmissionStatus } from '../models/submission.model';
+import { paginationSchema } from './common.validator';
 
 export const createSubmissionSchema = Joi.object({
   problemId: Joi.string().required(),
@@ -31,4 +32,11 @@ export const submissionQuerySchema = Joi.object({
   status: Joi.string()
     .valid(...Object.values(SubmissionStatus))
     .optional(),
-});
+}).concat(paginationSchema);
+
+export const adminSubmissionQuerySchema = Joi.object({
+  problemId: Joi.string().optional(),
+  status: Joi.string()
+    .valid(...Object.values(SubmissionStatus))
+    .optional(),
+}).concat(paginationSchema);

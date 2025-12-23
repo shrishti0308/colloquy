@@ -4,6 +4,10 @@ import { SubmissionStatus } from '../models/submission.model';
 import * as submissionService from '../services/submission.service';
 import ApiResponse from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
+import {
+  buildPaginationMetadata,
+  getPaginationParams,
+} from '../utils/pagination';
 
 /**
  * @desc    Create a new submission
@@ -32,6 +36,8 @@ export const createSubmission = asyncHandler(
  */
 export const getMySubmissions = asyncHandler(
   async (req: Request, res: Response) => {
+    const paginationParams = getPaginationParams(req.query);
+
     const filters = {
       problemId: req.query.problemId as string | undefined,
       difficulty: req.query.difficulty as ProblemDifficulty | undefined,
@@ -44,15 +50,27 @@ export const getMySubmissions = asyncHandler(
       status: req.query.status as SubmissionStatus | undefined,
     };
 
-    const submissions = await submissionService.getMySubmissions(
+    const { submissions, total } = await submissionService.getMySubmissions(
       req.user!.id,
-      filters
+      filters,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
     );
 
     res
       .status(200)
       .json(
-        new ApiResponse(200, submissions, 'Submissions fetched successfully')
+        new ApiResponse(
+          200,
+          submissions,
+          'Submissions fetched successfully',
+          pagination
+        )
       );
   }
 );
@@ -64,12 +82,23 @@ export const getMySubmissions = asyncHandler(
  */
 export const getAllSubmissions = asyncHandler(
   async (req: Request, res: Response) => {
+    const paginationParams = getPaginationParams(req.query);
+
     const filters = {
       problemId: req.query.problemId as string | undefined,
       status: req.query.status as SubmissionStatus | undefined,
     };
 
-    const submissions = await submissionService.getAllSubmissions(filters);
+    const { submissions, total } = await submissionService.getAllSubmissions(
+      filters,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
+    );
 
     res
       .status(200)
@@ -77,7 +106,8 @@ export const getAllSubmissions = asyncHandler(
         new ApiResponse(
           200,
           submissions,
-          'All submissions fetched successfully'
+          'All submissions fetched successfully',
+          pagination
         )
       );
   }
@@ -107,8 +137,17 @@ export const getSubmissionById = asyncHandler(
  */
 export const getSubmissionsByUser = asyncHandler(
   async (req: Request, res: Response) => {
-    const submissions = await submissionService.getSubmissionsByUser(
-      req.params.userId
+    const paginationParams = getPaginationParams(req.query);
+
+    const { submissions, total } = await submissionService.getSubmissionsByUser(
+      req.params.userId,
+      paginationParams
+    );
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
     );
 
     res
@@ -117,7 +156,8 @@ export const getSubmissionsByUser = asyncHandler(
         new ApiResponse(
           200,
           submissions,
-          'User submissions fetched successfully'
+          'User submissions fetched successfully',
+          pagination
         )
       );
   }
