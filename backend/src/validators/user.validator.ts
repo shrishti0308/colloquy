@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { UserRole } from '../models/user.model';
+import { paginationSchema } from './common.validator';
 
 export const updateProfileSchema = Joi.object({
   name: Joi.string().trim().min(2).max(100).optional(),
@@ -30,3 +31,5 @@ export const adminUpdateUserSchema = Joi.object({
     .valid(...Object.values(UserRole))
     .optional(),
 }).min(1);
+
+export const getUsersQuerySchema = paginationSchema;

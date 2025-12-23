@@ -3,6 +3,10 @@ import * as userService from '../services/user.service';
 import ApiError from '../utils/apiError';
 import ApiResponse from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
+import {
+  buildPaginationMetadata,
+  getPaginationParams,
+} from '../utils/pagination';
 
 /**
  * @desc    Get all users
@@ -10,10 +14,21 @@ import { asyncHandler } from '../utils/asyncHandler';
  * @access  Admin
  */
 export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
-  const users = await userService.getAllUsers();
+  const paginationParams = getPaginationParams(req.query);
+
+  const { users, total } = await userService.getAllUsers(paginationParams);
+
+  const pagination = buildPaginationMetadata(
+    total,
+    paginationParams.page,
+    paginationParams.limit
+  );
+
   res
     .status(200)
-    .json(new ApiResponse(200, users, 'Users fetched successfully'));
+    .json(
+      new ApiResponse(200, users, 'Users fetched successfully', pagination)
+    );
 });
 
 /**
@@ -65,10 +80,27 @@ export const restoreUser = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getDeletedUsers = asyncHandler(
   async (req: Request, res: Response) => {
-    const users = await userService.getDeletedUsers();
+    const paginationParams = getPaginationParams(req.query);
+
+    const { users, total } =
+      await userService.getDeletedUsers(paginationParams);
+
+    const pagination = buildPaginationMetadata(
+      total,
+      paginationParams.page,
+      paginationParams.limit
+    );
+
     res
       .status(200)
-      .json(new ApiResponse(200, users, 'Deleted users fetched successfully'));
+      .json(
+        new ApiResponse(
+          200,
+          users,
+          'Deleted users fetched successfully',
+          pagination
+        )
+      );
   }
 );
 
