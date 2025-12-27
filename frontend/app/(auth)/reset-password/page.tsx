@@ -204,7 +204,7 @@ export default function ResetPasswordPage() {
 
       <div className="mt-6 text-center space-y-2">
         <p className="text-sm text-muted-foreground">
-          Didn't receive the code?{" "}
+          Didn&apos;t receive the code?{" "}
           <Link
             href="/forgot-password"
             className="text-primary hover:underline"
