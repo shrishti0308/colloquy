@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Check Your Email</h1>
           <p className="text-muted-foreground mb-4">
-            We've sent a password reset link to
+            We&apos;ve sent a password reset link to
           </p>
           <p className="font-medium text-foreground">{formData.email}</p>
         </div>
@@ -106,7 +106,7 @@ export default function ForgotPasswordPage() {
 
         <div className="mt-6">
           <p className="text-xs text-muted-foreground mb-2">
-            Didn't receive the email? Check your spam folder
+            Didn&apos;t receive the email? Check your spam folder
           </p>
           <Link href="/login" className="text-sm text-primary hover:underline">
             Back to Sign In
@@ -121,7 +121,7 @@ export default function ForgotPasswordPage() {
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-foreground mb-2">Forgot Password?</h1>
         <p className="text-muted-foreground">
-          Enter your email and we'll send you a reset link
+          Enter your email and we&apos;ll send you a reset link
         </p>
       </div>
 
